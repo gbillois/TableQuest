@@ -31,7 +31,7 @@
       <nav class="tabs card" aria-label="Navigation principale">
         <button class="tab is-active" data-tab-target="learn">📘 Apprendre</button>
         <button class="tab" data-tab-target="train">🎯 S'entraîner</button>
-        <button class="tab" data-tab-target="challenge">⚡ Défi</button>
+        <button class="tab" data-tab-target="challenge">🕹️ Jeu</button>
         <button class="tab" data-tab-target="progress">🏆 Progrès</button>
         <button class="tab" data-tab-target="settings">⚙️ Configuration</button>
       </nav>
@@ -134,23 +134,77 @@
         </div>
       </section>
 
-      <section class="panel card" id="challenge" aria-label="Défi">
+      <section class="panel card" id="challenge" aria-label="Jeu">
         <div class="panel-head">
-          <h2>Défi chrono ⚡</h2>
-          <p>1 minute de questions mélangées. But: aller vite et juste.</p>
+          <h2>Jeu 🕹️</h2>
+          <p>Choisis un type de jeu: défi chrono, image mystère ou tour de briques.</p>
+        </div>
+
+        <div class="game-mode-switch" role="group" aria-label="Type de jeu">
+          <button type="button" class="mode-btn is-active" id="game-mode-timed">⏱️ Défi chrono</button>
+          <button type="button" class="mode-btn" id="game-mode-image">🖼️ Découvre l'image</button>
+          <button type="button" class="mode-btn" id="game-mode-tower">🧱 Construit ta tour</button>
+        </div>
+
+        <div class="game-visual">
+          <div id="timed-game" hidden>
+            <p class="game-label">Défi chrono</p>
+            <p class="timed-note">60 secondes pour viser un score de 0 à 10000.</p>
+          </div>
+
+          <div id="image-game">
+            <p class="game-label">Image mystère</p>
+            <div class="image-reveal">
+              <div class="image-grid" aria-hidden="true">
+                <span class="image-emoji-cell">🐶</span>
+                <span class="image-emoji-cell">🐱</span>
+                <span class="image-emoji-cell">🚗</span>
+                <span class="image-emoji-cell">🦄</span>
+              </div>
+              <div class="image-mask" id="image-mask" aria-hidden="true">
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+                <span class="image-mask-tile"></span>
+              </div>
+            </div>
+          </div>
+
+          <div id="tower-game" hidden>
+            <p class="game-label">Ta tour de briques</p>
+            <div class="tower-stack" id="tower-stack"></div>
+          </div>
         </div>
 
         <div class="challenge-head">
           <button class="btn btn-primary" id="challenge-start">Démarrer le défi</button>
           <div class="chip-group">
-            <span class="chip" id="challenge-timer">Temps: 60s</span>
-            <span class="chip" id="challenge-score">Score: 0 / 0</span>
+            <span class="chip" id="challenge-timer">Progression: 0 / 10</span>
+            <div
+              class="timer-gauge"
+              id="challenge-timer-gauge"
+              hidden
+              role="progressbar"
+              aria-label="Temps restant"
+              aria-valuemin="0"
+              aria-valuemax="60"
+              aria-valuenow="60"
+            >
+              <div class="timer-gauge-fill" id="challenge-timer-fill"></div>
+            </div>
+            <span class="chip" id="challenge-score">Score: 0 pts</span>
           </div>
         </div>
 
         <div class="question-card">
           <div class="question-line">
-            <p class="question" id="challenge-question">Appuie sur "Démarrer le défi".</p>
+            <p class="question" id="challenge-question">Défi chrono: appuie sur "Démarrer le défi".</p>
             <p class="inline-result" id="challenge-inline-result" aria-live="polite"></p>
           </div>
           <p class="hint">Tape ta réponse avec les boutons.</p>
@@ -187,6 +241,14 @@
             <button type="button" class="keypad-key keypad-action" data-action="clear">Effacer</button>
             <button type="button" class="keypad-key" data-key="0">0</button>
           </div>
+        </div>
+
+        <div class="leaderboard" id="leaderboard-wrap" hidden>
+          <div class="leaderboard-head">
+            <h3>Leaderboard ⏱️</h3>
+            <button type="button" class="btn btn-ghost" id="leaderboard-clear">Vider</button>
+          </div>
+          <ol class="leaderboard-list" id="leaderboard-list"></ol>
         </div>
       </section>
 
@@ -231,7 +293,7 @@
 
         <div class="settings-block">
           <h3>1. Tables actives</h3>
-          <p class="settings-text">Ces tables seront utilisées dans S'entraîner et Défi.</p>
+          <p class="settings-text">Ces tables seront utilisées dans S'entraîner et Jeu.</p>
           <div class="table-toggle-grid" id="settings-table-grid" aria-label="Tables actives">
             <button type="button" class="table-toggle" data-config-table="1">Table de 1</button>
             <button type="button" class="table-toggle" data-config-table="2">Table de 2</button>
@@ -248,7 +310,16 @@
         </div>
 
         <div class="settings-block">
-          <h3>2. Exporter et importer les résultats</h3>
+          <h3>2. Affichage du jeu</h3>
+          <p class="settings-text">Sur grand écran, place le visuel du jeu à gauche ou à droite du clavier.</p>
+          <div class="handedness-toggle" role="group" aria-label="Position du visuel">
+            <button type="button" class="table-toggle" id="settings-visual-left">Visuel à gauche</button>
+            <button type="button" class="table-toggle" id="settings-visual-right">Visuel à droite (gaucher)</button>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <h3>3. Exporter et importer les résultats</h3>
           <p class="settings-text">
             Conseil: exporte en fichier JSON. Tu peux aussi préparer un email.
           </p>
@@ -261,7 +332,7 @@
         </div>
 
         <div class="settings-block settings-danger">
-          <h3>3. Remettre à zéro</h3>
+          <h3>4. Remettre à zéro</h3>
           <p class="settings-text">
             Efface tous les résultats et remet la configuration par défaut.
           </p>
@@ -271,6 +342,7 @@
         <p class="settings-status" id="settings-status" aria-live="polite"></p>
       </section>
     </main>
+    <div id="celebration-layer" class="celebration-layer" aria-live="polite" aria-atomic="true"></div>
 
     <script src="./app.js"></script>
   </body>

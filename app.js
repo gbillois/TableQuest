@@ -1,11 +1,135 @@
-const STORAGE_KEY = "tablequest-progress-v2";
+const STORAGE_KEY = "tablequest-progress-v3";
 const INTERVALS_MS = [0, 4 * 3600_000, 24 * 3600_000, 3 * 24 * 3600_000, 7 * 24 * 3600_000, 14 * 24 * 3600_000];
 const MAX_ANSWER_DIGITS = 3;
 const CHALLENGE_RESULT_DELAY_MS = 1650;
-const CHALLENGE_IDLE_TEXT = 'Appuie sur "Démarrer le défi".';
+const GAME_MAX_STEPS = 10;
+const CHALLENGE_DURATION_SECONDS = 60;
+const LEADERBOARD_LIMIT = 10;
+const CHALLENGE_IDLE_TEXT = 'Défi chrono: appuie sur "Démarrer le défi".';
 const RESET_CONFIRM_WORD = "EFFACER";
 const DEFAULT_TABLES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const TIMED_MAX_SCORE = 10_000;
+const TIMED_BASE_POINTS = 180;
+const TIMED_COMPLEX_BONUS = 0.35;
+const TIMED_HIGH_BONUS = 0.15;
+const TIMED_WRONG_PENALTY = 40;
+const CELEBRATION_DURATION_MS = 5000;
 const FACTS = [];
+const IMAGE_THEME_EMOJIS = [
+  "🐶",
+  "🐱",
+  "🐭",
+  "🐹",
+  "🐰",
+  "🦊",
+  "🐻",
+  "🐼",
+  "🐨",
+  "🐯",
+  "🦁",
+  "🐮",
+  "🐷",
+  "🐸",
+  "🐵",
+  "🐔",
+  "🐧",
+  "🐦",
+  "🦉",
+  "🦄",
+  "🐴",
+  "🦋",
+  "🐢",
+  "🐠",
+  "🐙",
+  "🦖",
+  "🦕",
+  "🐬",
+  "🦒",
+  "🐘",
+  "🦓",
+  "🦘",
+  "🦦",
+  "🐝",
+  "🍎",
+  "🍓",
+  "🍉",
+  "🍍",
+  "🥝",
+  "🍇",
+  "🍒",
+  "🍌",
+  "🥕",
+  "🌽",
+  "🍄",
+  "🌸",
+  "🌼",
+  "🌻",
+  "🌈",
+  "⭐",
+  "🌙",
+  "☀️",
+  "⚡",
+  "🔥",
+  "❄️",
+  "🚗",
+  "🚕",
+  "🚌",
+  "🚓",
+  "🚑",
+  "🚒",
+  "🚜",
+  "🏎️",
+  "🚲",
+  "🛴",
+  "🚂",
+  "🚁",
+  "✈️",
+  "🚀",
+  "🛸",
+  "⛵",
+  "⚽",
+  "🏀",
+  "🏈",
+  "⚾",
+  "🎾",
+  "🥎",
+  "🏐",
+  "🎯",
+  "🎈",
+];
+const IMAGE_THEMES = IMAGE_THEME_EMOJIS.map((emoji, index) => ({
+  name: `Image ${index + 1}`,
+  emoji,
+}));
+const IMAGE_TILE_ORDER = [7, 2, 9, 0, 4, 6, 1, 8, 3, 5];
+const CELEBRATION_EFFECTS = [
+  { name: "fireworks", message: "BRAVO !", emojis: ["🎆", "✨", "🎇"], particles: 26, shake: false },
+  { name: "champion", message: "CHAMPION !", emojis: ["🏆", "⭐", "🥳"], particles: 24, shake: true },
+  { name: "stars", message: "SUPER !", emojis: ["⭐", "🌟", "✨"], particles: 28, shake: false },
+  { name: "party", message: "TROP FORT !", emojis: ["🎉", "🎊", "🥳"], particles: 26, shake: false },
+  { name: "space", message: "MISSION RÉUSSIE !", emojis: ["🚀", "🛸", "🌠"], particles: 24, shake: true },
+  { name: "animals", message: "GÉNIAL !", emojis: ["🐶", "🐱", "🦄"], particles: 24, shake: false },
+  { name: "ocean", message: "BIEN JOUÉ !", emojis: ["🐠", "🐢", "🌈"], particles: 24, shake: false },
+  { name: "dino", message: "ROOOAR !", emojis: ["🦖", "🦕", "💥"], particles: 24, shake: true },
+  { name: "magic", message: "MAGIQUE !", emojis: ["🪄", "✨", "🌟"], particles: 26, shake: false },
+  { name: "hearts", message: "FORMIDABLE !", emojis: ["💖", "💙", "💛"], particles: 28, shake: false },
+];
+const CELEBRATION_PREMIUM_EFFECTS = [
+  { name: "volcano", message: "WOW LÉGENDAIRE !", emojis: ["🌋", "🔥", "💥"], particles: 34, shake: true },
+  { name: "rainbow", message: "ARC-EN-CIEL !", emojis: ["🌈", "⭐", "🎉"], particles: 34, shake: false },
+  { name: "thunder", message: "PUISSANCE MAX !", emojis: ["⚡", "🌟", "💫"], particles: 36, shake: true },
+  { name: "galaxy", message: "COSMIQUE !", emojis: ["🌌", "🪐", "✨"], particles: 34, shake: false },
+  { name: "dragon", message: "DRAGON MODE !", emojis: ["🐉", "🔥", "🏅"], particles: 36, shake: true },
+];
+
+function pickImageTargets() {
+  const shuffled = [...IMAGE_THEMES];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, 4).map((theme) => theme.emoji);
+}
 
 for (let a = 1; a <= 10; a += 1) {
   for (let b = 1; b <= 10; b += 1) {
@@ -19,6 +143,8 @@ const state = {
   learnMultiplier: 4,
   settings: {
     enabledTables: [...DEFAULT_TABLES],
+    leaderboard: [],
+    visualSide: "left",
   },
   train: {
     filter: "all",
@@ -29,10 +155,15 @@ const state = {
   },
   challenge: {
     active: false,
-    timeLeft: 60,
+    mode: "timed",
     score: 0,
+    hits: 0,
     total: 0,
     current: null,
+    progress: 0,
+    bricks: [],
+    imageTargets: pickImageTargets(),
+    timeLeft: CHALLENGE_DURATION_SECONDS,
     timerId: null,
   },
 };
@@ -55,19 +186,36 @@ const els = {
   trainNext: document.getElementById("train-next"),
   keypads: [...document.querySelectorAll(".keypad")],
   challengeStart: document.getElementById("challenge-start"),
+  gameModeTimed: document.getElementById("game-mode-timed"),
+  gameModeImage: document.getElementById("game-mode-image"),
+  gameModeTower: document.getElementById("game-mode-tower"),
+  challengePanel: document.getElementById("challenge"),
+  timedGame: document.getElementById("timed-game"),
+  imageGame: document.getElementById("image-game"),
+  imageEmojiCells: [...document.querySelectorAll(".image-emoji-cell")],
+  imageMaskTiles: [...document.querySelectorAll(".image-mask-tile")],
+  towerGame: document.getElementById("tower-game"),
+  towerStack: document.getElementById("tower-stack"),
   challengeTimer: document.getElementById("challenge-timer"),
+  challengeTimerGauge: document.getElementById("challenge-timer-gauge"),
+  challengeTimerFill: document.getElementById("challenge-timer-fill"),
   challengeScore: document.getElementById("challenge-score"),
   challengeQuestion: document.getElementById("challenge-question"),
   challengeInlineResult: document.getElementById("challenge-inline-result"),
   challengeForm: document.getElementById("challenge-form"),
   challengeAnswer: document.getElementById("challenge-answer"),
   challengeSubmit: document.getElementById("challenge-submit"),
+  leaderboardWrap: document.getElementById("leaderboard-wrap"),
+  leaderboardList: document.getElementById("leaderboard-list"),
+  leaderboardClear: document.getElementById("leaderboard-clear"),
   statAccuracy: document.getElementById("stat-accuracy"),
   statMastered: document.getElementById("stat-mastered"),
   statDue: document.getElementById("stat-due"),
   heatmap: document.getElementById("heatmap"),
   weakFacts: document.getElementById("weak-facts"),
   settingsTableButtons: [...document.querySelectorAll("[data-config-table]")],
+  settingsVisualLeft: document.getElementById("settings-visual-left"),
+  settingsVisualRight: document.getElementById("settings-visual-right"),
   settingsActiveSummary: document.getElementById("settings-active-summary"),
   settingsStatus: document.getElementById("settings-status"),
   settingsExportFile: document.getElementById("settings-export-file"),
@@ -75,7 +223,10 @@ const els = {
   settingsImportBtn: document.getElementById("settings-import-btn"),
   settingsImportInput: document.getElementById("settings-import-input"),
   settingsResetBtn: document.getElementById("settings-reset-btn"),
+  celebrationLayer: document.getElementById("celebration-layer"),
 };
+
+let celebrationEndTimerId = null;
 
 function defaultEntry() {
   return {
@@ -101,6 +252,39 @@ function sanitizeEnabledTables(value) {
     (a, b) => a - b,
   );
   return cleaned.length ? cleaned : [...DEFAULT_TABLES];
+}
+
+function sanitizeLeaderboard(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const cleaned = value
+    .map((row) => {
+      if (!row || typeof row !== "object") {
+        return null;
+      }
+      const rawPoints = row.points ?? row.score;
+      const points = clampToRange(Math.trunc(Number(rawPoints) || 0), 0, TIMED_MAX_SCORE);
+      const total = clampToRange(Math.trunc(Number(row.total) || 0), 0, 100000);
+      const fallbackHits =
+        Number.isFinite(Number(row.hits)) ? Number(row.hits) : Number.isFinite(Number(row.score)) && Number(row.score) <= total ? Number(row.score) : 0;
+      const hits = clampToRange(Math.trunc(Number(fallbackHits) || 0), 0, total);
+      const accuracy = total > 0 ? hits / total : 0;
+      const playedAt =
+        typeof row.playedAt === "string" && row.playedAt
+          ? row.playedAt
+          : new Date().toISOString();
+      return { points, hits, total, accuracy, playedAt };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.points - a.points || b.hits - a.hits || b.accuracy - a.accuracy)
+    .slice(0, LEADERBOARD_LIMIT);
+
+  return cleaned;
+}
+
+function sanitizeVisualSide(value) {
+  return value === "right" ? "right" : "left";
 }
 
 function sanitizeProgress(raw) {
@@ -149,7 +333,10 @@ function mastery(entry) {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("tablequest-progress-v1");
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ||
+      localStorage.getItem("tablequest-progress-v2") ||
+      localStorage.getItem("tablequest-progress-v1");
     if (!raw) {
       return;
     }
@@ -166,6 +353,15 @@ function loadState() {
 
     const loadedTables = parsed.settings?.enabledTables || parsed.enabledTables;
     state.settings.enabledTables = sanitizeEnabledTables(loadedTables);
+    if (
+      parsed.settings?.gameMode === "timed" ||
+      parsed.settings?.gameMode === "image" ||
+      parsed.settings?.gameMode === "tower"
+    ) {
+      state.challenge.mode = parsed.settings.gameMode;
+    }
+    state.settings.leaderboard = sanitizeLeaderboard(parsed.settings?.leaderboard);
+    state.settings.visualSide = sanitizeVisualSide(parsed.settings?.visualSide);
   } catch (err) {
     console.warn("Impossible de charger la sauvegarde locale:", err);
   }
@@ -181,6 +377,9 @@ function saveState() {
         learnMultiplier: state.learnMultiplier,
         settings: {
           enabledTables: state.settings.enabledTables,
+          gameMode: state.challenge.mode,
+          leaderboard: state.settings.leaderboard,
+          visualSide: state.settings.visualSide,
         },
       }),
     );
@@ -209,6 +408,95 @@ function setSettingsStatus(text, type = "") {
     return;
   }
   setFeedback(els.settingsStatus, type, text);
+}
+
+function hasPremiumCelebrationsUnlocked() {
+  const enabled = state.settings.enabledTables;
+  return enabled.includes(7) && enabled.includes(8) && enabled.includes(9);
+}
+
+function pickRandomEffect(effects) {
+  return effects[Math.floor(Math.random() * effects.length)];
+}
+
+function renderCelebrationWave(effect) {
+  els.celebrationLayer.className = "celebration-layer";
+  els.celebrationLayer.classList.add("is-active", `effect-${effect.name}`);
+  els.celebrationLayer.innerHTML = "";
+
+  const badge = document.createElement("div");
+  badge.className = "celebration-badge";
+  badge.textContent = effect.message;
+  els.celebrationLayer.appendChild(badge);
+
+  for (let i = 0; i < effect.particles; i += 1) {
+    const particle = document.createElement("span");
+    particle.className = "celebration-particle";
+    particle.textContent = effect.emojis[i % effect.emojis.length];
+    particle.style.left = `${Math.random() * 100}%`;
+    particle.style.top = `${60 + Math.random() * 34}%`;
+    particle.style.setProperty("--dx", `${-85 + Math.random() * 170}px`);
+    particle.style.setProperty("--dy", `${-200 - Math.random() * 250}px`);
+    particle.style.setProperty("--rot", `${-90 + Math.random() * 180}deg`);
+    particle.style.animationDelay = `${Math.random() * 350}ms`;
+    particle.style.animationDuration = `${2800 + Math.random() * 2200}ms`;
+    els.celebrationLayer.appendChild(particle);
+  }
+
+  if (effect.shake) {
+    document.body.classList.remove("screen-shake");
+    void document.body.offsetWidth;
+    document.body.classList.add("screen-shake");
+  }
+}
+
+function clearCelebration() {
+  if (!els.celebrationLayer) {
+    return;
+  }
+  if (celebrationEndTimerId) {
+    clearTimeout(celebrationEndTimerId);
+    celebrationEndTimerId = null;
+  }
+  els.celebrationLayer.className = "celebration-layer";
+  els.celebrationLayer.innerHTML = "";
+  document.body.classList.remove("screen-shake");
+}
+
+function triggerCelebration() {
+  if (!els.celebrationLayer) {
+    return;
+  }
+  clearCelebration();
+
+  const premiumUnlocked = hasPremiumCelebrationsUnlocked();
+  const effectsPool = premiumUnlocked
+    ? [...CELEBRATION_EFFECTS, ...CELEBRATION_PREMIUM_EFFECTS]
+    : CELEBRATION_EFFECTS;
+
+  const effect = pickRandomEffect(effectsPool);
+  renderCelebrationWave(effect);
+  celebrationEndTimerId = setTimeout(() => {
+    clearCelebration();
+  }, CELEBRATION_DURATION_MS);
+}
+
+function timedSuccessCoefficient(fact) {
+  let coefficient = 1;
+  if (fact.a >= 6) {
+    coefficient += TIMED_COMPLEX_BONUS;
+  }
+  if (fact.b >= 6) {
+    coefficient += TIMED_COMPLEX_BONUS;
+  }
+  if (fact.a >= 8 || fact.b >= 8) {
+    coefficient += TIMED_HIGH_BONUS;
+  }
+  return coefficient;
+}
+
+function pointsForTimedSuccess(fact) {
+  return Math.round(TIMED_BASE_POINTS * timedSuccessCoefficient(fact));
 }
 
 function updateProgress(factId, isCorrect) {
@@ -244,33 +532,73 @@ function factPool(filter) {
   return FACTS.filter((f) => f.a === table);
 }
 
-function pickFact({ filter = "all", avoidId = null, dueBias = true } = {}) {
-  const now = Date.now();
-  const pool = factPool(filter).filter((fact) => fact.id !== avoidId);
-  if (!pool.length) {
+function aggregateWeakness(stats) {
+  if (!stats || stats.attempts <= 0) {
+    return 0.72;
+  }
+  const acc = stats.correct / stats.attempts;
+  const lowExposure = 1 - Math.min(stats.attempts, 30) / 30;
+  return 0.8 * (1 - acc) + 0.2 * lowExposure;
+}
+
+function pickFact({ filter = "all", avoidId = null } = {}) {
+  const allFacts = factPool(filter);
+  if (!allFacts.length) {
     return null;
   }
 
-  const scored = pool.map((fact) => {
+  const candidates = allFacts.filter((fact) => fact.id !== avoidId);
+  const pool = candidates.length ? candidates : allFacts;
+
+  const tableStats = new Map();
+  const multiplierStats = new Map();
+  allFacts.forEach((fact) => {
     const entry = getEntry(fact.id);
-    const due = entry.nextDue <= now ? 1 : 0;
-    const diff = 1 - accuracy(entry);
-    const lowStreak = 1 - Math.min(entry.streak, 5) / 5;
-    const w = diff * 0.58 + lowStreak * 0.27 + due * 0.15;
-    return { fact, score: w, due };
+
+    const tableCurrent = tableStats.get(fact.a) || { attempts: 0, correct: 0 };
+    tableCurrent.attempts += entry.attempts;
+    tableCurrent.correct += entry.correct;
+    tableStats.set(fact.a, tableCurrent);
+
+    const multCurrent = multiplierStats.get(fact.b) || { attempts: 0, correct: 0 };
+    multCurrent.attempts += entry.attempts;
+    multCurrent.correct += entry.correct;
+    multiplierStats.set(fact.b, multCurrent);
   });
 
-  let candidates = scored;
-  if (dueBias) {
-    const dueOnly = scored.filter((s) => s.due);
-    if (dueOnly.length) {
-      candidates = dueOnly;
+  const now = Date.now();
+  let totalWeight = 0;
+  const weightedFacts = pool.map((fact) => {
+    const entry = getEntry(fact.id);
+    const tableWeakness = aggregateWeakness(tableStats.get(fact.a));
+    const multiplierWeakness = aggregateWeakness(multiplierStats.get(fact.b));
+    const factWeakness = entry.attempts === 0 ? 0.75 : 1 - accuracy(entry);
+    const lowStreak = 1 - Math.min(entry.streak, 5) / 5;
+    const lowExposure = 1 - Math.min(entry.attempts, 12) / 12;
+    const dueBoost = entry.nextDue <= now ? 1 : 0;
+
+    const priority =
+      0.34 * factWeakness +
+      0.24 * tableWeakness +
+      0.24 * multiplierWeakness +
+      0.1 * lowStreak +
+      0.05 * lowExposure +
+      0.03 * dueBoost;
+
+    const weight = Math.max(0.05, priority);
+    totalWeight += weight;
+    return { fact, weight };
+  });
+
+  let roll = Math.random() * totalWeight;
+  for (const item of weightedFacts) {
+    roll -= item.weight;
+    if (roll <= 0) {
+      return item.fact;
     }
   }
 
-  candidates.sort((x, y) => y.score - x.score);
-  const top = candidates.slice(0, Math.min(8, candidates.length));
-  return top[Math.floor(Math.random() * top.length)].fact;
+  return weightedFacts[weightedFacts.length - 1].fact;
 }
 
 function renderLearn() {
@@ -322,7 +650,6 @@ function showNextTrainQuestion() {
   state.train.current = pickFact({
     filter: state.train.filter,
     avoidId: state.train.current ? state.train.current.id : null,
-    dueBias: true,
   });
 
   if (!state.train.current) {
@@ -384,8 +711,17 @@ function onTrainSubmit(event) {
 }
 
 function updateChallengeUI() {
-  els.challengeTimer.textContent = `Temps: ${state.challenge.timeLeft}s`;
-  els.challengeScore.textContent = `Score: ${state.challenge.score} / ${state.challenge.total}`;
+  if (state.challenge.mode === "timed") {
+    const ratio = Math.max(0, Math.min(1, state.challenge.timeLeft / CHALLENGE_DURATION_SECONDS));
+    els.challengeTimerFill.style.width = `${ratio * 100}%`;
+    els.challengeTimerGauge.setAttribute("aria-label", `Temps restant: ${state.challenge.timeLeft} secondes`);
+    els.challengeTimerGauge.setAttribute("aria-valuenow", `${state.challenge.timeLeft}`);
+    els.challengeScore.textContent = `Score: ${state.challenge.score} pts`;
+    return;
+  }
+  const progress = state.challenge.mode === "image" ? state.challenge.progress : state.challenge.bricks.length;
+  els.challengeTimer.textContent = `Progression: ${progress} / ${GAME_MAX_STEPS}`;
+  els.challengeScore.textContent = `Réussites: ${state.challenge.score}`;
 }
 
 function clearChallengeTimer() {
@@ -395,43 +731,114 @@ function clearChallengeTimer() {
   }
 }
 
+function addLeaderboardEntry(points, hits, total) {
+  const accuracy = total > 0 ? hits / total : 0;
+  const playedAt = new Date().toISOString();
+  state.settings.leaderboard = sanitizeLeaderboard([
+    {
+      points,
+      hits,
+      total,
+      accuracy,
+      playedAt,
+    },
+    ...state.settings.leaderboard,
+  ]);
+  const rank = state.settings.leaderboard.findIndex(
+    (entry) => entry.points === points && entry.hits === hits && entry.total === total && entry.playedAt === playedAt,
+  );
+  return rank >= 0 ? rank + 1 : -1;
+}
+
+function renderLeaderboard() {
+  const timedMode = state.challenge.mode === "timed";
+  els.leaderboardWrap.hidden = !timedMode;
+  if (!timedMode) {
+    return;
+  }
+
+  els.leaderboardList.innerHTML = "";
+  if (!state.settings.leaderboard.length) {
+    const li = document.createElement("li");
+    li.className = "leaderboard-empty";
+    li.textContent = "Aucun score pour l'instant.";
+    els.leaderboardList.appendChild(li);
+    return;
+  }
+
+  state.settings.leaderboard.forEach((entry, index) => {
+    const li = document.createElement("li");
+    const pct = entry.total > 0 ? Math.round((entry.hits / entry.total) * 100) : 0;
+    const date = new Date(entry.playedAt).toLocaleDateString("fr-FR");
+    li.textContent = `${index + 1}. ${entry.points} pts - ${entry.hits}/${entry.total} (${pct}%) - ${date}`;
+    els.leaderboardList.appendChild(li);
+  });
+}
+
 function cancelChallengeSilently() {
+  clearCelebration();
   clearChallengeTimer();
   state.challenge.active = false;
-  state.challenge.timeLeft = 60;
   state.challenge.score = 0;
+  state.challenge.hits = 0;
   state.challenge.total = 0;
   state.challenge.current = null;
+  state.challenge.progress = 0;
+  state.challenge.bricks = [];
+  state.challenge.imageTargets = pickImageTargets();
+  state.challenge.timeLeft = CHALLENGE_DURATION_SECONDS;
 
   els.challengeStart.disabled = false;
   els.challengeAnswer.disabled = true;
   els.challengeSubmit.disabled = true;
   els.challengeAnswer.value = "";
-  els.challengeQuestion.textContent = CHALLENGE_IDLE_TEXT;
+  els.challengeQuestion.textContent = state.challenge.mode === "timed" ? CHALLENGE_IDLE_TEXT : "";
   setFeedback(els.challengeInlineResult, "", "");
+  renderChallengeVisuals();
   updateChallengeUI();
 }
 
-function stopChallenge() {
+function stopChallenge(reason = "") {
   clearChallengeTimer();
   state.challenge.active = false;
   els.challengeStart.disabled = false;
   els.challengeAnswer.disabled = true;
   els.challengeSubmit.disabled = true;
-  setFeedback(els.challengeInlineResult, "", "");
-  const pct = state.challenge.total ? Math.round((state.challenge.score / state.challenge.total) * 100) : 0;
-  setFeedback(els.challengeInlineResult, "good", `Défi fini : ${state.challenge.score}/${state.challenge.total} (${pct}%).`);
+
+  if (state.challenge.mode === "timed") {
+    let rank = -1;
+    if (reason === "timeup") {
+      rank = addLeaderboardEntry(state.challenge.score, state.challenge.hits, state.challenge.total);
+      saveState();
+      renderLeaderboard();
+    }
+    const pct = state.challenge.total > 0 ? Math.round((state.challenge.hits / state.challenge.total) * 100) : 0;
+    const text =
+      reason === "timeup"
+        ? `Temps écoulé: ${state.challenge.score} pts (${state.challenge.hits}/${state.challenge.total}, ${pct}%).`
+        : `Partie terminée: ${state.challenge.score} pts (${state.challenge.hits}/${state.challenge.total}, ${pct}%).`;
+    setFeedback(els.challengeInlineResult, "good", text);
+    if (reason === "timeup" && rank > 0 && rank <= 3) {
+      triggerCelebration();
+    }
+    return;
+  }
+
+  const progress = state.challenge.mode === "image" ? state.challenge.progress : state.challenge.bricks.length;
+  setFeedback(els.challengeInlineResult, "good", `Partie finie: ${progress} / ${GAME_MAX_STEPS}.`);
+  if (reason === "completed") {
+    triggerCelebration();
+  }
 }
 
 function nextChallengeQuestion() {
   state.challenge.current = pickFact({
     filter: "all",
     avoidId: state.challenge.current ? state.challenge.current.id : null,
-    dueBias: false,
   });
 
   if (!state.challenge.current) {
-    stopChallenge();
+    stopChallenge("no-facts");
     setFeedback(els.challengeInlineResult, "bad", "Aucune table active. Va dans Configuration.");
     return;
   }
@@ -484,32 +891,40 @@ function startChallenge() {
   if (state.challenge.active) {
     return;
   }
+  clearCelebration();
   if (!state.settings.enabledTables.length) {
     setFeedback(els.challengeInlineResult, "bad", "Aucune table active. Va dans Configuration.");
     return;
   }
 
   state.challenge.active = true;
-  state.challenge.timeLeft = 60;
   state.challenge.score = 0;
+  state.challenge.hits = 0;
   state.challenge.total = 0;
   state.challenge.current = null;
+  state.challenge.progress = 0;
+  state.challenge.bricks = [];
+  state.challenge.imageTargets = pickImageTargets();
+  state.challenge.timeLeft = CHALLENGE_DURATION_SECONDS;
 
   els.challengeStart.disabled = true;
   els.challengeAnswer.disabled = false;
   els.challengeSubmit.disabled = false;
   setFeedback(els.challengeInlineResult, "", "");
+  renderChallengeVisuals();
   updateChallengeUI();
   nextChallengeQuestion();
 
-  state.challenge.timerId = setInterval(() => {
-    state.challenge.timeLeft -= 1;
-    updateChallengeUI();
-    if (state.challenge.timeLeft <= 0) {
-      stopChallenge();
-      renderProgress();
-    }
-  }, 1000);
+  if (state.challenge.mode === "timed") {
+    state.challenge.timerId = setInterval(() => {
+      state.challenge.timeLeft -= 1;
+      updateChallengeUI();
+      if (state.challenge.timeLeft <= 0) {
+        stopChallenge("timeup");
+        renderProgress();
+      }
+    }, 1000);
+  }
 }
 
 function onChallengeSubmit(event) {
@@ -524,24 +939,83 @@ function onChallengeSubmit(event) {
 
   const ok = val === state.challenge.current.result;
   state.challenge.total += 1;
+  updateProgress(state.challenge.current.id, ok);
+  const factText = `${state.challenge.current.a} x ${state.challenge.current.b} = ${state.challenge.current.result}`;
+
+  if (state.challenge.mode === "timed") {
+    if (ok) {
+      state.challenge.hits += 1;
+      state.challenge.score = clampToRange(
+        state.challenge.score + pointsForTimedSuccess(state.challenge.current),
+        0,
+        TIMED_MAX_SCORE,
+      );
+    } else {
+      state.challenge.score = clampToRange(state.challenge.score - TIMED_WRONG_PENALTY, 0, TIMED_MAX_SCORE);
+    }
+
+    if (ok) {
+      setFeedback(els.challengeInlineResult, "good", `Bravo ! ${factText}.`);
+    } else {
+      setFeedback(els.challengeInlineResult, "bad", `Essaye encore : ${factText}.`);
+    }
+
+    updateChallengeUI();
+    els.challengeAnswer.disabled = true;
+    els.challengeSubmit.disabled = true;
+    setTimeout(() => {
+      if (!state.challenge.active) {
+        return;
+      }
+      els.challengeAnswer.disabled = false;
+      els.challengeSubmit.disabled = false;
+      nextChallengeQuestion();
+    }, CHALLENGE_RESULT_DELAY_MS);
+    return;
+  }
+
   if (ok) {
     state.challenge.score += 1;
   }
-  updateProgress(state.challenge.current.id, ok);
+
+  if (state.challenge.mode === "image") {
+    if (ok) {
+      state.challenge.progress = Math.min(GAME_MAX_STEPS, state.challenge.progress + 1);
+      setFeedback(els.challengeInlineResult, "good", `Bravo ! ${factText}.`);
+    } else {
+      state.challenge.progress = Math.max(0, state.challenge.progress - 1);
+      setFeedback(els.challengeInlineResult, "bad", `Essaye encore : ${factText}.`);
+    }
+  } else {
+    if (ok) {
+      if (state.challenge.bricks.length < GAME_MAX_STEPS) {
+        state.challenge.bricks.push({
+          table: state.challenge.current.a,
+          cracks: 0,
+        });
+      }
+      setFeedback(els.challengeInlineResult, "good", `Bravo ! ${factText}.`);
+    } else if (state.challenge.bricks.length) {
+      const topBrick = state.challenge.bricks[state.challenge.bricks.length - 1];
+      topBrick.cracks += 1;
+      if (topBrick.cracks >= 3) {
+        state.challenge.bricks.pop();
+        setFeedback(els.challengeInlineResult, "bad", `La brique casse ! ${factText}.`);
+      } else {
+        setFeedback(els.challengeInlineResult, "bad", `Brique fissurée (${topBrick.cracks}/3). ${factText}.`);
+      }
+    } else {
+      setFeedback(els.challengeInlineResult, "bad", `Essaye encore : ${factText}.`);
+    }
+  }
+
+  renderChallengeVisuals();
   updateChallengeUI();
 
-  if (ok) {
-    setFeedback(
-      els.challengeInlineResult,
-      "good",
-      `Bravo ! ${state.challenge.current.a} x ${state.challenge.current.b} = ${state.challenge.current.result}.`,
-    );
-  } else {
-    setFeedback(
-      els.challengeInlineResult,
-      "bad",
-      `Essaye encore : ${state.challenge.current.a} x ${state.challenge.current.b} = ${state.challenge.current.result}.`,
-    );
+  const progress = state.challenge.mode === "image" ? state.challenge.progress : state.challenge.bricks.length;
+  if (progress >= GAME_MAX_STEPS) {
+    stopChallenge("completed");
+    return;
   }
 
   els.challengeAnswer.disabled = true;
@@ -554,6 +1028,76 @@ function onChallengeSubmit(event) {
     els.challengeSubmit.disabled = false;
     nextChallengeQuestion();
   }, CHALLENGE_RESULT_DELAY_MS);
+}
+
+function renderTimedGame() {
+  els.timedGame.hidden = state.challenge.mode !== "timed";
+}
+
+function renderImageGame() {
+  els.imageEmojiCells.forEach((cell, idx) => {
+    cell.textContent = state.challenge.imageTargets[idx] || "⭐";
+  });
+  els.imageMaskTiles.forEach((tile, tileIndex) => {
+    const revealIndex = IMAGE_TILE_ORDER[tileIndex] ?? tileIndex;
+    tile.hidden = revealIndex < state.challenge.progress;
+  });
+}
+
+function renderTowerGame() {
+  els.towerStack.innerHTML = "";
+  for (let visualIndex = 0; visualIndex < GAME_MAX_STEPS; visualIndex += 1) {
+    const brickIndex = GAME_MAX_STEPS - 1 - visualIndex;
+    const brick = state.challenge.bricks[brickIndex];
+    const slot = document.createElement("div");
+    slot.className = "tower-slot";
+
+    if (brick) {
+      const block = document.createElement("div");
+      block.className = `tower-brick table-${brick.table} ${brick.cracks ? `crack-${brick.cracks}` : ""}`;
+      block.title = `Brique ${brickIndex + 1}`;
+      slot.appendChild(block);
+    }
+
+    els.towerStack.appendChild(slot);
+  }
+}
+
+function renderChallengeVisuals() {
+  const timedMode = state.challenge.mode === "timed";
+  const imageMode = state.challenge.mode === "image";
+
+  els.timedGame.hidden = !timedMode;
+  els.imageGame.hidden = !imageMode;
+  els.towerGame.hidden = timedMode || imageMode;
+  els.gameModeTimed.classList.toggle("is-active", timedMode);
+  els.gameModeImage.classList.toggle("is-active", imageMode);
+  els.gameModeTower.classList.toggle("is-active", state.challenge.mode === "tower");
+  els.challengeTimer.hidden = timedMode;
+  els.challengeTimerGauge.hidden = !timedMode;
+  els.challengeStart.textContent = timedMode ? "Démarrer le défi" : "Rejouer";
+
+  renderTimedGame();
+  renderImageGame();
+  renderTowerGame();
+  renderLeaderboard();
+}
+
+function renderChallengeLayout() {
+  const rightSide = state.settings.visualSide === "right";
+  els.challengePanel.classList.toggle("visual-right", rightSide);
+}
+
+function setChallengeMode(mode) {
+  if (mode !== "timed" && mode !== "image" && mode !== "tower") {
+    return;
+  }
+  state.challenge.mode = mode;
+  cancelChallengeSilently();
+  saveState();
+  if (mode !== "timed") {
+    startChallenge();
+  }
 }
 
 function renderProgress() {
@@ -626,6 +1170,9 @@ function setTab(tabId) {
   els.panels.forEach((panel) => {
     panel.classList.toggle("is-active", panel.id === tabId);
   });
+  if (tabId === "challenge" && state.challenge.mode !== "timed" && !state.challenge.active) {
+    startChallenge();
+  }
 }
 
 function renderTrainFilterOptions() {
@@ -662,6 +1209,19 @@ function renderSettingsTables() {
 
   const summary = enabled.join(", ");
   els.settingsActiveSummary.textContent = `${enabled.length} table(s) active(s): ${summary}.`;
+
+  const leftActive = state.settings.visualSide !== "right";
+  els.settingsVisualLeft.classList.toggle("is-active", leftActive);
+  els.settingsVisualLeft.setAttribute("aria-pressed", leftActive ? "true" : "false");
+  els.settingsVisualRight.classList.toggle("is-active", !leftActive);
+  els.settingsVisualRight.setAttribute("aria-pressed", !leftActive ? "true" : "false");
+}
+
+function applyVisualSide(value) {
+  state.settings.visualSide = sanitizeVisualSide(value);
+  saveState();
+  renderSettingsTables();
+  renderChallengeLayout();
 }
 
 function applySettingsTables(newTables) {
@@ -699,7 +1259,7 @@ function onSettingsTableToggle(event) {
 function buildBackupPayload() {
   return {
     app: "TableQuest",
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     data: {
       progress: state.progress,
@@ -707,6 +1267,9 @@ function buildBackupPayload() {
       learnMultiplier: state.learnMultiplier,
       settings: {
         enabledTables: state.settings.enabledTables,
+        gameMode: state.challenge.mode,
+        leaderboard: state.settings.leaderboard,
+        visualSide: state.settings.visualSide,
       },
     },
   };
@@ -781,6 +1344,15 @@ function applyImportedPayload(payload) {
 
   const importedTables = source.settings?.enabledTables || source.enabledTables;
   state.settings.enabledTables = sanitizeEnabledTables(importedTables);
+  state.settings.leaderboard = sanitizeLeaderboard(source.settings?.leaderboard);
+  state.settings.visualSide = sanitizeVisualSide(source.settings?.visualSide);
+  if (
+    source.settings?.gameMode === "timed" ||
+    source.settings?.gameMode === "image" ||
+    source.settings?.gameMode === "tower"
+  ) {
+    state.challenge.mode = source.settings.gameMode;
+  }
 
   state.train.filter = "all";
   state.train.asked = 0;
@@ -794,6 +1366,7 @@ function applyImportedPayload(payload) {
   renderLearn();
   renderTrainFilterOptions();
   renderSettingsTables();
+  renderChallengeLayout();
   updateTrainCounters();
   showNextTrainQuestion();
   renderProgress();
@@ -834,6 +1407,9 @@ function resetAllData() {
   state.learnTable = 2;
   state.learnMultiplier = 4;
   state.settings.enabledTables = [...DEFAULT_TABLES];
+  state.settings.leaderboard = [];
+  state.settings.visualSide = "left";
+  state.challenge.mode = "timed";
 
   state.train.filter = "all";
   state.train.asked = 0;
@@ -847,6 +1423,7 @@ function resetAllData() {
   renderLearn();
   renderTrainFilterOptions();
   renderSettingsTables();
+  renderChallengeLayout();
   updateTrainCounters();
   showNextTrainQuestion();
   renderProgress();
@@ -895,9 +1472,32 @@ function bindEvents() {
 
   els.challengeStart.addEventListener("click", startChallenge);
   els.challengeForm.addEventListener("submit", onChallengeSubmit);
+  els.gameModeTimed.addEventListener("click", () => {
+    setChallengeMode("timed");
+  });
+  els.gameModeImage.addEventListener("click", () => {
+    setChallengeMode("image");
+  });
+  els.gameModeTower.addEventListener("click", () => {
+    setChallengeMode("tower");
+  });
+  els.leaderboardClear.addEventListener("click", () => {
+    state.settings.leaderboard = [];
+    saveState();
+    renderLeaderboard();
+    setSettingsStatus("Leaderboard vidé.", "good");
+  });
 
   els.settingsTableButtons.forEach((btn) => {
     btn.addEventListener("click", onSettingsTableToggle);
+  });
+  els.settingsVisualLeft.addEventListener("click", () => {
+    applyVisualSide("left");
+    setSettingsStatus("Affichage du jeu: visuel à gauche.", "good");
+  });
+  els.settingsVisualRight.addEventListener("click", () => {
+    applyVisualSide("right");
+    setSettingsStatus("Affichage du jeu: visuel à droite.", "good");
   });
 
   els.settingsExportFile.addEventListener("click", exportBackupFile);
@@ -916,6 +1516,7 @@ function init() {
 
   renderLearn();
   renderSettingsTables();
+  renderChallengeLayout();
   updateTrainCounters();
   showNextTrainQuestion();
   cancelChallengeSilently();

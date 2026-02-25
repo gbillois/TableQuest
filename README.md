@@ -5,11 +5,19 @@ Application web responsive (mobile, tablette, ordinateur) pour apprendre les tab
 ## Fonctionnalités
 
 - Mode `Apprendre` avec représentation visuelle (groupes), table complète, et claviers virtuels pour choisir la table et le deuxième nombre.
-- Mode `S'entraîner` adaptatif: les faits les moins maîtrisés reviennent plus souvent.
-- Mode `Défi` chrono de 60 secondes.
-- Clavier numérique tactile intégré (boutons 0-9, Effacer, Retour + bouton Valider séparé).
+- Mode `S'entraîner` adaptatif: insiste sur les tables et multiplicateurs les moins réussis pour favoriser l'apprentissage.
+- Mode `Jeu` avec 3 types:
+  - `Défi chrono`: 60 secondes avec jauge de temps décroissante pour faire le meilleur score.
+  - `Découvre l'image`: révèle une grille 2x2 de 4 images tirées aléatoirement depuis une bibliothèque de 80 visuels (masqués au départ).
+  - `Construit ta tour`: 10 emplacements à remplir, brique fissurée sur erreur, casse après 3 erreurs.
+- À chaque victoire, un effet fun aléatoire unique pendant 5 secondes (badges, pluie d'émojis, shake, etc.).
+- Dans le `Défi chrono`, l'effet fun se déclenche uniquement si le score entre dans le top 3 du leaderboard.
+- Effets premium débloqués si les tables 7, 8 et 9 sont actives.
+- Affichage du visuel du jeu configurable sur grand écran: à gauche (par défaut) ou à droite (mode gaucher).
+- Leaderboard local du `Défi chrono` (top scores sauvegardés).
+- Clavier numérique tactile intégré (boutons 0-9, Effacer + bouton Valider séparé).
 - Mode `Progrès`: précision globale, faits maîtrisés, faits à revoir, carte de maîtrise.
-- Mode `Configuration` avec choix des tables actives pour `S'entraîner` et `Défi`.
+- Mode `Configuration` avec choix des tables actives pour `S'entraîner` et `Jeu`.
 - Export/import des résultats en JSON + préparation d'email pour partage.
 - Remise à zéro avec confirmation explicite.
 - Sauvegarde locale automatique des progrès (`localStorage`).
