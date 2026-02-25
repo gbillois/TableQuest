@@ -540,7 +540,7 @@ function onChallengeSubmit(event) {
     setFeedback(
       els.challengeInlineResult,
       "bad",
-      `Pas grave, essaye encore : ${state.challenge.current.a} x ${state.challenge.current.b} = ${state.challenge.current.result}.`,
+      `Essaye encore : ${state.challenge.current.a} x ${state.challenge.current.b} = ${state.challenge.current.result}.`,
     );
   }
 
