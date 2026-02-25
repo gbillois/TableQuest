@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TableQuest - Tables de multiplication</title>
+    <meta
+      name="description"
+      content="Application ludique pour apprendre les tables de multiplication de 1 à 10."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <main class="app">
+      <header class="hero card">
+        <p class="badge">Tables 1 à 10</p>
+        <h1>TableQuest</h1>
+        <p class="subtitle">
+          Comprendre, s'entraîner un peu chaque jour, progresser.
+        </p>
+      </header>
+
+      <nav class="tabs card" aria-label="Navigation principale">
+        <button class="tab is-active" data-tab-target="learn">Apprendre</button>
+        <button class="tab" data-tab-target="train">S'entraîner</button>
+        <button class="tab" data-tab-target="challenge">Défi</button>
+        <button class="tab" data-tab-target="progress">Progrès</button>
+        <button class="tab" data-tab-target="settings">Configuration</button>
+      </nav>
+
+      <section class="panel card is-active" id="learn" aria-label="Apprendre">
+        <div class="panel-head">
+          <h2>Comprendre avec des groupes</h2>
+          <p>Exemple: 3 x 4, c'est 3 groupes de 4.</p>
+        </div>
+
+        <div class="learn-table-wrap">
+          <p class="picker-title">Choisis la table</p>
+          <div class="table-keypad" aria-label="Choix de la table">
+            <button type="button" class="table-key" data-learn-table="1">1</button>
+            <button type="button" class="table-key" data-learn-table="2">2</button>
+            <button type="button" class="table-key" data-learn-table="3">3</button>
+            <button type="button" class="table-key" data-learn-table="4">4</button>
+            <button type="button" class="table-key" data-learn-table="5">5</button>
+            <button type="button" class="table-key" data-learn-table="6">6</button>
+            <button type="button" class="table-key" data-learn-table="7">7</button>
+            <button type="button" class="table-key" data-learn-table="8">8</button>
+            <button type="button" class="table-key" data-learn-table="9">9</button>
+            <button type="button" class="table-key table-key-ten" data-learn-table="10">10</button>
+          </div>
+        </div>
+        <div class="learn-multiplier-wrap">
+          <p class="picker-title">Choisis le deuxième nombre</p>
+          <div class="multiplier-keypad" aria-label="Choix du deuxième nombre">
+            <button type="button" class="multiplier-key" data-learn-multiplier="1">1</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="2">2</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="3">3</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="4">4</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="5">5</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="6">6</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="7">7</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="8">8</button>
+            <button type="button" class="multiplier-key" data-learn-multiplier="9">9</button>
+            <button type="button" class="multiplier-key multiplier-key-ten" data-learn-multiplier="10">10</button>
+          </div>
+        </div>
+
+        <div class="equation" id="learn-equation" aria-live="polite"></div>
+        <div class="array-grid" id="learn-grid" aria-hidden="true"></div>
+        <ul class="table-list" id="learn-list"></ul>
+      </section>
+
+      <section class="panel card" id="train" aria-label="S'entraîner">
+        <div class="panel-head">
+          <h2>Entraînement</h2>
+          <p>Réponds et vois tout de suite la bonne réponse.</p>
+        </div>
+
+        <div class="train-top">
+          <label for="train-filter">
+            Table à travailler
+            <select id="train-filter">
+              <option value="all">Toutes les tables</option>
+            </select>
+          </label>
+          <div class="chip-group">
+            <span class="chip" id="train-asked">Questions: 0</span>
+            <span class="chip" id="train-correct">Réussies: 0</span>
+          </div>
+        </div>
+
+        <div class="question-card">
+          <div class="question-line">
+            <p class="question" id="train-question">2 x 3 = ?</p>
+            <p class="inline-result" id="train-inline-result" aria-live="polite"></p>
+          </div>
+          <p class="hint">Tape ta réponse avec les boutons.</p>
+          <form id="train-form">
+            <label class="sr-only" for="train-answer">Réponse</label>
+            <input
+              id="train-answer"
+              type="number"
+              inputmode="numeric"
+              autocomplete="off"
+              readonly
+              required
+            />
+            <button type="submit" class="btn btn-primary">Valider</button>
+            <button id="train-next" class="btn btn-ghost" type="button" hidden>
+              Suivante
+            </button>
+          </form>
+          <div class="keypad" data-input-id="train-answer" data-form-id="train-form" aria-label="Clavier numérique">
+            <button type="button" class="keypad-key" data-key="1">1</button>
+            <button type="button" class="keypad-key" data-key="2">2</button>
+            <button type="button" class="keypad-key" data-key="3">3</button>
+            <button type="button" class="keypad-key" data-key="4">4</button>
+            <button type="button" class="keypad-key" data-key="5">5</button>
+            <button type="button" class="keypad-key" data-key="6">6</button>
+            <button type="button" class="keypad-key" data-key="7">7</button>
+            <button type="button" class="keypad-key" data-key="8">8</button>
+            <button type="button" class="keypad-key" data-key="9">9</button>
+            <button type="button" class="keypad-key keypad-action" data-action="clear">Effacer</button>
+            <button type="button" class="keypad-key" data-key="0">0</button>
+            <button type="button" class="keypad-key keypad-action" data-action="back">Retour</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel card" id="challenge" aria-label="Défi">
+        <div class="panel-head">
+          <h2>Défi chrono</h2>
+          <p>1 minute de questions mélangées. But: aller vite et juste.</p>
+        </div>
+
+        <div class="challenge-head">
+          <button class="btn btn-primary" id="challenge-start">Démarrer le défi</button>
+          <div class="chip-group">
+            <span class="chip" id="challenge-timer">Temps: 60s</span>
+            <span class="chip" id="challenge-score">Score: 0 / 0</span>
+          </div>
+        </div>
+
+        <div class="question-card">
+          <div class="question-line">
+            <p class="question" id="challenge-question">Appuie sur "Démarrer le défi".</p>
+            <p class="inline-result" id="challenge-inline-result" aria-live="polite"></p>
+          </div>
+          <p class="hint">Tape ta réponse avec les boutons.</p>
+          <form id="challenge-form">
+            <label class="sr-only" for="challenge-answer">Réponse</label>
+            <input
+              id="challenge-answer"
+              type="number"
+              inputmode="numeric"
+              autocomplete="off"
+              readonly
+              disabled
+              required
+            />
+            <button type="submit" class="btn btn-primary" disabled id="challenge-submit">
+              Valider
+            </button>
+          </form>
+          <div
+            class="keypad"
+            data-input-id="challenge-answer"
+            data-form-id="challenge-form"
+            aria-label="Clavier numérique"
+          >
+            <button type="button" class="keypad-key" data-key="1">1</button>
+            <button type="button" class="keypad-key" data-key="2">2</button>
+            <button type="button" class="keypad-key" data-key="3">3</button>
+            <button type="button" class="keypad-key" data-key="4">4</button>
+            <button type="button" class="keypad-key" data-key="5">5</button>
+            <button type="button" class="keypad-key" data-key="6">6</button>
+            <button type="button" class="keypad-key" data-key="7">7</button>
+            <button type="button" class="keypad-key" data-key="8">8</button>
+            <button type="button" class="keypad-key" data-key="9">9</button>
+            <button type="button" class="keypad-key keypad-action" data-action="clear">Effacer</button>
+            <button type="button" class="keypad-key" data-key="0">0</button>
+            <button type="button" class="keypad-key keypad-action" data-action="back">Retour</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel card" id="progress" aria-label="Progrès">
+        <div class="panel-head">
+          <h2>Ton suivi</h2>
+          <p>Ce que tu sais bien, et ce qu'il faut revoir.</p>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat">
+            <h3>Réussite globale</h3>
+            <p id="stat-accuracy">0%</p>
+          </article>
+          <article class="stat">
+            <h3>Opérations maîtrisées</h3>
+            <p id="stat-mastered">0 / 100</p>
+          </article>
+          <article class="stat">
+            <h3>À revoir aujourd'hui</h3>
+            <p id="stat-due">0</p>
+          </article>
+        </div>
+
+        <div class="progress-layout">
+          <div>
+            <h3>Carte des opérations (a x b)</h3>
+            <div class="heatmap" id="heatmap"></div>
+          </div>
+          <div>
+            <h3>Les plus difficiles</h3>
+            <ol id="weak-facts" class="weak-list"></ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel card" id="settings" aria-label="Configuration">
+        <div class="panel-head">
+          <h2>Configuration</h2>
+          <p>Choisis les tables à entraîner et gère tes sauvegardes.</p>
+        </div>
+
+        <div class="settings-block">
+          <h3>1. Tables actives</h3>
+          <p class="settings-text">Ces tables seront utilisées dans S'entraîner et Défi.</p>
+          <div class="table-toggle-grid" id="settings-table-grid" aria-label="Tables actives">
+            <button type="button" class="table-toggle" data-config-table="1">Table de 1</button>
+            <button type="button" class="table-toggle" data-config-table="2">Table de 2</button>
+            <button type="button" class="table-toggle" data-config-table="3">Table de 3</button>
+            <button type="button" class="table-toggle" data-config-table="4">Table de 4</button>
+            <button type="button" class="table-toggle" data-config-table="5">Table de 5</button>
+            <button type="button" class="table-toggle" data-config-table="6">Table de 6</button>
+            <button type="button" class="table-toggle" data-config-table="7">Table de 7</button>
+            <button type="button" class="table-toggle" data-config-table="8">Table de 8</button>
+            <button type="button" class="table-toggle" data-config-table="9">Table de 9</button>
+            <button type="button" class="table-toggle" data-config-table="10">Table de 10</button>
+          </div>
+          <p class="settings-text" id="settings-active-summary"></p>
+        </div>
+
+        <div class="settings-block">
+          <h3>2. Exporter et importer les résultats</h3>
+          <p class="settings-text">
+            Conseil: exporte en fichier JSON. Tu peux aussi préparer un email.
+          </p>
+          <div class="settings-actions">
+            <button type="button" class="btn btn-primary" id="settings-export-file">Exporter en fichier</button>
+            <button type="button" class="btn btn-ghost" id="settings-export-email">Préparer un email</button>
+            <button type="button" class="btn btn-ghost" id="settings-import-btn">Importer un fichier</button>
+            <input id="settings-import-input" type="file" accept="application/json" hidden />
+          </div>
+        </div>
+
+        <div class="settings-block settings-danger">
+          <h3>3. Remettre à zéro</h3>
+          <p class="settings-text">
+            Efface tous les résultats et remet la configuration par défaut.
+          </p>
+          <button type="button" class="btn btn-danger" id="settings-reset-btn">Remettre à zéro</button>
+        </div>
+
+        <p class="settings-status" id="settings-status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
