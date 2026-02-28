@@ -4,12 +4,18 @@ Application web responsive (mobile, tablette, ordinateur) pour apprendre les tab
 
 ## Fonctionnalités
 
-- Mode `Apprendre` avec représentation visuelle (groupes), table complète, et claviers virtuels pour choisir la table et le deuxième nombre.
+- Mode `Apprendre` découpé en 3 ateliers ludiques:
+  - `Les tables`: lire la table choisie.
+  - `Les blocs`: choisir une table et un curseur pour visualiser les groupes.
+  - `Tableau mystère`: cliquer sur une case pour révéler le résultat.
 - Mode `S'entraîner` adaptatif: insiste sur les tables et multiplicateurs les moins réussis pour favoriser l'apprentissage.
-- Mode `Jeu` avec 3 types:
+- Mode `Jeu` avec 6 types:
   - `Défi chrono`: 60 secondes avec jauge de temps décroissante pour faire le meilleur score.
   - `Découvre l'image`: révèle une grille 2x2 de 4 images tirées aléatoirement depuis une bibliothèque de 80 visuels (masqués au départ).
   - `Construit ta tour`: 10 emplacements à remplir, brique fissurée sur erreur, casse après 3 erreurs.
+  - `Boss final`: vide la barre de vie du boss avant que ton bouclier tombe à zéro.
+  - `Combo`: enchaîne les bonnes réponses pour atteindre un combo de 10.
+  - `Défense du château`: mode tower defense visuel avec 3 vagues (3, puis 4, puis 5 ennemis) et ennemis différents à chaque vague.
 - À chaque victoire, un effet fun aléatoire unique pendant 5 secondes (badges, pluie d'émojis, shake, etc.).
 - Dans le `Défi chrono`, l'effet fun se déclenche uniquement si le score entre dans le top 3 du leaderboard.
 - Effets premium débloqués si les tables 7, 8 et 9 sont actives.

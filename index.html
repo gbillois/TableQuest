@@ -38,13 +38,19 @@
 
       <section class="panel card is-active" id="learn" aria-label="Apprendre">
         <div class="panel-head">
-          <h2>Comprendre avec des groupes 🧩</h2>
-          <p>Exemple: 3 x 4, c'est 3 groupes de 4.</p>
+          <h2>Apprendre en jouant 🧠</h2>
+          <p>Choisis un atelier: lire une table, manipuler des blocs ou découvrir le tableau mystère.</p>
         </div>
 
-        <div class="learn-table-wrap">
-          <p class="picker-title">Choisis la table</p>
-          <div class="table-keypad" aria-label="Choix de la table">
+        <div class="learn-mode-switch" role="group" aria-label="Ateliers d'apprentissage">
+          <button type="button" class="learn-mode-btn is-active" data-learn-mode="tables">📚 Les tables</button>
+          <button type="button" class="learn-mode-btn" data-learn-mode="blocks">🧱 Les blocs</button>
+          <button type="button" class="learn-mode-btn" data-learn-mode="mystery">🕵️ Tableau mystère</button>
+        </div>
+
+        <section class="learn-subpanel is-active" id="learn-panel-tables" aria-label="Les tables">
+          <p class="picker-title">Choisis une table à lire</p>
+          <div class="table-keypad" aria-label="Choix de la table à lire">
             <button type="button" class="table-key" data-learn-table="1">1</button>
             <button type="button" class="table-key" data-learn-table="2">2</button>
             <button type="button" class="table-key" data-learn-table="3">3</button>
@@ -56,26 +62,42 @@
             <button type="button" class="table-key" data-learn-table="9">9</button>
             <button type="button" class="table-key table-key-ten" data-learn-table="10">10</button>
           </div>
-        </div>
-        <div class="learn-multiplier-wrap">
-          <p class="picker-title">Choisis le deuxième nombre</p>
-          <div class="multiplier-keypad" aria-label="Choix du deuxième nombre">
-            <button type="button" class="multiplier-key" data-learn-multiplier="1">1</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="2">2</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="3">3</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="4">4</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="5">5</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="6">6</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="7">7</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="8">8</button>
-            <button type="button" class="multiplier-key" data-learn-multiplier="9">9</button>
-            <button type="button" class="multiplier-key multiplier-key-ten" data-learn-multiplier="10">10</button>
-          </div>
-        </div>
 
-        <div class="equation" id="learn-equation" aria-live="polite"></div>
-        <div class="array-grid" id="learn-grid" aria-hidden="true"></div>
-        <ul class="table-list" id="learn-list"></ul>
+          <div class="equation" id="learn-table-title" aria-live="polite"></div>
+          <ul class="table-list" id="learn-list"></ul>
+        </section>
+
+        <section class="learn-subpanel" id="learn-panel-blocks" aria-label="Les blocs">
+          <p class="picker-title">Choisis une table de blocs</p>
+          <div class="table-keypad" aria-label="Choix de la table en blocs">
+            <button type="button" class="table-key" data-block-table="1">1</button>
+            <button type="button" class="table-key" data-block-table="2">2</button>
+            <button type="button" class="table-key" data-block-table="3">3</button>
+            <button type="button" class="table-key" data-block-table="4">4</button>
+            <button type="button" class="table-key" data-block-table="5">5</button>
+            <button type="button" class="table-key" data-block-table="6">6</button>
+            <button type="button" class="table-key" data-block-table="7">7</button>
+            <button type="button" class="table-key" data-block-table="8">8</button>
+            <button type="button" class="table-key" data-block-table="9">9</button>
+            <button type="button" class="table-key table-key-ten" data-block-table="10">10</button>
+          </div>
+
+          <label class="learn-slider-wrap" for="learn-multiplier-slider">
+            Nombre de blocs: <strong id="learn-multiplier-value">4</strong>
+            <input id="learn-multiplier-slider" type="range" min="1" max="10" step="1" value="4" />
+          </label>
+
+          <div class="equation" id="learn-equation" aria-live="polite"></div>
+          <div class="array-grid" id="learn-grid" aria-hidden="true"></div>
+        </section>
+
+        <section class="learn-subpanel" id="learn-panel-mystery" aria-label="Tableau mystère">
+          <p class="picker-title">Clique sur une case pour révéler le résultat</p>
+          <div class="mystery-board" id="learn-mystery-grid" role="grid" aria-label="Tableau mystère des multiplications"></div>
+          <button type="button" class="btn btn-ghost mystery-reset-btn" id="learn-mystery-reset">
+            Recommencer le tableau mystère
+          </button>
+        </section>
       </section>
 
       <section class="panel card" id="train" aria-label="S'entraîner">
@@ -137,13 +159,16 @@
       <section class="panel card" id="challenge" aria-label="Jeu">
         <div class="panel-head">
           <h2>Jeu 🕹️</h2>
-          <p>Choisis un type de jeu: défi chrono, image mystère ou tour de briques.</p>
+          <p>Choisis un type de jeu: défi chrono, image mystère, tour, boss, combo ou défense du château.</p>
         </div>
 
         <div class="game-mode-switch" role="group" aria-label="Type de jeu">
           <button type="button" class="mode-btn is-active" id="game-mode-timed">⏱️ Défi chrono</button>
           <button type="button" class="mode-btn" id="game-mode-image">🖼️ Découvre l'image</button>
           <button type="button" class="mode-btn" id="game-mode-tower">🧱 Construit ta tour</button>
+          <button type="button" class="mode-btn" id="game-mode-boss">👾 Boss final</button>
+          <button type="button" class="mode-btn" id="game-mode-combo">🔥 Combo</button>
+          <button type="button" class="mode-btn" id="game-mode-castle">🏰 Défense du château</button>
         </div>
 
         <div class="game-visual">
@@ -179,6 +204,58 @@
           <div id="tower-game" hidden>
             <p class="game-label">Ta tour de briques</p>
             <div class="tower-stack" id="tower-stack"></div>
+          </div>
+
+          <div id="boss-game" hidden>
+            <p class="game-label">Boss final</p>
+            <div class="boss-scene">
+              <span class="boss-emoji">👾</span>
+              <div class="boss-stats">
+                <div class="status-line">
+                  <span>Vie du boss</span>
+                  <span id="boss-hp-text">12 / 12</span>
+                </div>
+                <div class="status-bar">
+                  <div class="status-bar-fill" id="boss-hp-fill"></div>
+                </div>
+                <p class="boss-shield" id="boss-shield-text">Bouclier: 3 / 3</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="combo-game" hidden>
+            <p class="game-label">Combo</p>
+            <div class="combo-scene">
+              <p class="combo-value" id="combo-value">Combo x0</p>
+              <div class="status-bar combo-bar">
+                <div class="status-bar-fill combo-fill" id="combo-fill"></div>
+              </div>
+              <p class="combo-best" id="combo-best">Meilleur combo: 0</p>
+            </div>
+          </div>
+
+          <div id="castle-game" hidden>
+            <p class="game-label">Défense du château</p>
+            <div class="castle-difficulty" role="group" aria-label="Difficulté du château">
+              <button type="button" class="castle-difficulty-btn" data-castle-difficulty="easy">Facile</button>
+              <button type="button" class="castle-difficulty-btn is-active" data-castle-difficulty="normal">Normal</button>
+              <button type="button" class="castle-difficulty-btn" data-castle-difficulty="hard">Difficile</button>
+            </div>
+            <div class="castle-scene">
+              <div class="status-line">
+                <span>Vagues défendues</span>
+                <span id="castle-wave-text">0 / 3</span>
+              </div>
+              <p class="castle-wave-detail" id="castle-wave-detail">Vague 1: 0 / 3</p>
+              <p class="castle-incoming" id="castle-incoming">Ennemis restants: 0</p>
+              <div class="castle-track-wrap">
+                <span class="castle-side-icon">⚔️</span>
+                <div class="castle-track" id="castle-track" aria-label="Piste des ennemis"></div>
+                <span class="castle-side-icon">🏰</span>
+              </div>
+              <p class="castle-lives" id="castle-lives">Vies du château: 4 / 4</p>
+              <p class="castle-fx" id="castle-fx" aria-live="polite"></p>
+            </div>
           </div>
         </div>
 
@@ -343,6 +420,7 @@
       </section>
     </main>
     <div id="celebration-layer" class="celebration-layer" aria-live="polite" aria-atomic="true"></div>
+    <div id="castle-danger-layer" class="castle-danger-layer" aria-hidden="true"></div>
 
     <script src="./app.js"></script>
   </body>

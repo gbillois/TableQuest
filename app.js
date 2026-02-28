@@ -13,6 +13,51 @@ const TIMED_BASE_POINTS = 180;
 const TIMED_COMPLEX_BONUS = 0.35;
 const TIMED_HIGH_BONUS = 0.15;
 const TIMED_WRONG_PENALTY = 40;
+const BOSS_MAX_HP = 12;
+const BOSS_MAX_SHIELD = 3;
+const COMBO_TARGET = 10;
+const CASTLE_DANGER_DURATION_MS = 3200;
+const CASTLE_DIFFICULTIES = {
+  easy: {
+    label: "Facile",
+    waves: [3, 4, 5],
+    lives: 6,
+    trackSteps: 10,
+    advanceOnCorrect: 0,
+    advanceOnWrong: 1,
+    enemySets: [
+      ["👾", "👺"],
+      ["🕷️", "🐍"],
+      ["🧟", "💀"],
+    ],
+  },
+  normal: {
+    label: "Normal",
+    waves: [3, 4, 5],
+    lives: 4,
+    trackSteps: 9,
+    advanceOnCorrect: 1,
+    advanceOnWrong: 1,
+    enemySets: [
+      ["👾", "👺"],
+      ["🕷️", "🐍"],
+      ["🧟", "💀"],
+    ],
+  },
+  hard: {
+    label: "Difficile",
+    waves: [3, 4, 5],
+    lives: 3,
+    trackSteps: 8,
+    advanceOnCorrect: 1,
+    advanceOnWrong: 2,
+    enemySets: [
+      ["👾", "👺", "💣"],
+      ["🕷️", "🐍", "☠️"],
+      ["🧟", "💀", "👹"],
+    ],
+  },
+};
 const CELEBRATION_DURATION_MS = 5000;
 const FACTS = [];
 const IMAGE_THEME_EMOJIS = [
@@ -139,8 +184,11 @@ for (let a = 1; a <= 10; a += 1) {
 
 const state = {
   progress: {},
+  learnMode: "tables",
   learnTable: 2,
+  learnBlockTable: 2,
   learnMultiplier: 4,
+  learnMystery: {},
   settings: {
     enabledTables: [...DEFAULT_TABLES],
     leaderboard: [],
@@ -156,6 +204,7 @@ const state = {
   challenge: {
     active: false,
     mode: "timed",
+    castleDifficulty: "normal",
     score: 0,
     hits: 0,
     total: 0,
@@ -163,6 +212,15 @@ const state = {
     progress: 0,
     bricks: [],
     imageTargets: pickImageTargets(),
+    bossHp: BOSS_MAX_HP,
+    bossShield: BOSS_MAX_SHIELD,
+    comboStreak: 0,
+    comboBest: 0,
+    castleWave: 0,
+    castleLives: CASTLE_DIFFICULTIES.normal.lives,
+    castleEnemies: [],
+    castleWaveTotal: 0,
+    castleWaveDefeated: 0,
     timeLeft: CHALLENGE_DURATION_SECONDS,
     timerId: null,
   },
@@ -171,11 +229,18 @@ const state = {
 const els = {
   tabs: [...document.querySelectorAll(".tab")],
   panels: [...document.querySelectorAll(".panel")],
+  learnModeButtons: [...document.querySelectorAll("[data-learn-mode]")],
+  learnSubpanels: [...document.querySelectorAll(".learn-subpanel")],
   learnTableButtons: [...document.querySelectorAll("[data-learn-table]")],
-  learnMultiplierButtons: [...document.querySelectorAll("[data-learn-multiplier]")],
+  learnBlockTableButtons: [...document.querySelectorAll("[data-block-table]")],
+  learnMultiplierSlider: document.getElementById("learn-multiplier-slider"),
+  learnMultiplierValue: document.getElementById("learn-multiplier-value"),
+  learnTableTitle: document.getElementById("learn-table-title"),
   learnEquation: document.getElementById("learn-equation"),
   learnGrid: document.getElementById("learn-grid"),
   learnList: document.getElementById("learn-list"),
+  learnMysteryGrid: document.getElementById("learn-mystery-grid"),
+  learnMysteryReset: document.getElementById("learn-mystery-reset"),
   trainFilter: document.getElementById("train-filter"),
   trainAsked: document.getElementById("train-asked"),
   trainCorrect: document.getElementById("train-correct"),
@@ -189,6 +254,9 @@ const els = {
   gameModeTimed: document.getElementById("game-mode-timed"),
   gameModeImage: document.getElementById("game-mode-image"),
   gameModeTower: document.getElementById("game-mode-tower"),
+  gameModeBoss: document.getElementById("game-mode-boss"),
+  gameModeCombo: document.getElementById("game-mode-combo"),
+  gameModeCastle: document.getElementById("game-mode-castle"),
   challengePanel: document.getElementById("challenge"),
   timedGame: document.getElementById("timed-game"),
   imageGame: document.getElementById("image-game"),
@@ -196,6 +264,22 @@ const els = {
   imageMaskTiles: [...document.querySelectorAll(".image-mask-tile")],
   towerGame: document.getElementById("tower-game"),
   towerStack: document.getElementById("tower-stack"),
+  bossGame: document.getElementById("boss-game"),
+  bossHpText: document.getElementById("boss-hp-text"),
+  bossHpFill: document.getElementById("boss-hp-fill"),
+  bossShieldText: document.getElementById("boss-shield-text"),
+  comboGame: document.getElementById("combo-game"),
+  comboValue: document.getElementById("combo-value"),
+  comboFill: document.getElementById("combo-fill"),
+  comboBest: document.getElementById("combo-best"),
+  castleGame: document.getElementById("castle-game"),
+  castleWaveText: document.getElementById("castle-wave-text"),
+  castleLives: document.getElementById("castle-lives"),
+  castleWaveDetail: document.getElementById("castle-wave-detail"),
+  castleIncoming: document.getElementById("castle-incoming"),
+  castleTrack: document.getElementById("castle-track"),
+  castleFx: document.getElementById("castle-fx"),
+  castleDifficultyButtons: [...document.querySelectorAll("[data-castle-difficulty]")],
   challengeTimer: document.getElementById("challenge-timer"),
   challengeTimerGauge: document.getElementById("challenge-timer-gauge"),
   challengeTimerFill: document.getElementById("challenge-timer-fill"),
@@ -224,9 +308,12 @@ const els = {
   settingsImportInput: document.getElementById("settings-import-input"),
   settingsResetBtn: document.getElementById("settings-reset-btn"),
   celebrationLayer: document.getElementById("celebration-layer"),
+  castleDangerLayer: document.getElementById("castle-danger-layer"),
 };
 
 let celebrationEndTimerId = null;
+let castleFxTimerId = null;
+let castleDangerTimerId = null;
 
 function defaultEntry() {
   return {
@@ -285,6 +372,14 @@ function sanitizeLeaderboard(value) {
 
 function sanitizeVisualSide(value) {
   return value === "right" ? "right" : "left";
+}
+
+function sanitizeLearnMode(value) {
+  return value === "blocks" || value === "mystery" ? value : "tables";
+}
+
+function sanitizeCastleDifficulty(value) {
+  return value === "easy" || value === "hard" ? value : "normal";
 }
 
 function sanitizeProgress(raw) {
@@ -346,7 +441,11 @@ function loadState() {
     }
 
     state.progress = sanitizeProgress(parsed.progress);
+    state.learnMode = sanitizeLearnMode(parsed.learnMode);
     state.learnTable = Number.isInteger(parsed.learnTable) ? clampToRange(parsed.learnTable, 1, 10) : state.learnTable;
+    state.learnBlockTable = Number.isInteger(parsed.learnBlockTable)
+      ? clampToRange(parsed.learnBlockTable, 1, 10)
+      : state.learnBlockTable;
     state.learnMultiplier = Number.isInteger(parsed.learnMultiplier)
       ? clampToRange(parsed.learnMultiplier, 1, 10)
       : state.learnMultiplier;
@@ -356,10 +455,15 @@ function loadState() {
     if (
       parsed.settings?.gameMode === "timed" ||
       parsed.settings?.gameMode === "image" ||
-      parsed.settings?.gameMode === "tower"
+      parsed.settings?.gameMode === "tower" ||
+      parsed.settings?.gameMode === "boss" ||
+      parsed.settings?.gameMode === "combo" ||
+      parsed.settings?.gameMode === "castle"
     ) {
       state.challenge.mode = parsed.settings.gameMode;
     }
+    state.challenge.castleDifficulty = sanitizeCastleDifficulty(parsed.settings?.castleDifficulty);
+    state.challenge.castleLives = getCastleConfig().lives;
     state.settings.leaderboard = sanitizeLeaderboard(parsed.settings?.leaderboard);
     state.settings.visualSide = sanitizeVisualSide(parsed.settings?.visualSide);
   } catch (err) {
@@ -373,11 +477,14 @@ function saveState() {
       STORAGE_KEY,
       JSON.stringify({
         progress: state.progress,
+        learnMode: state.learnMode,
         learnTable: state.learnTable,
+        learnBlockTable: state.learnBlockTable,
         learnMultiplier: state.learnMultiplier,
         settings: {
           enabledTables: state.settings.enabledTables,
           gameMode: state.challenge.mode,
+          castleDifficulty: state.challenge.castleDifficulty,
           leaderboard: state.settings.leaderboard,
           visualSide: state.settings.visualSide,
         },
@@ -499,6 +606,145 @@ function pointsForTimedSuccess(fact) {
   return Math.round(TIMED_BASE_POINTS * timedSuccessCoefficient(fact));
 }
 
+function getCastleConfig() {
+  return CASTLE_DIFFICULTIES[state.challenge.castleDifficulty] || CASTLE_DIFFICULTIES.normal;
+}
+
+function getCastleWaveCount() {
+  return getCastleConfig().waves.length;
+}
+
+function castleEnemiesForWave(waveNumber) {
+  const config = getCastleConfig();
+  return config.waves[waveNumber - 1] || 0;
+}
+
+function castleEnemySetForWave(waveNumber) {
+  const config = getCastleConfig();
+  return config.enemySets[waveNumber - 1] || ["👾"];
+}
+
+function clearCastleFx() {
+  if (castleFxTimerId) {
+    clearTimeout(castleFxTimerId);
+    castleFxTimerId = null;
+  }
+  if (!els.castleGame || !els.castleFx) {
+    return;
+  }
+  els.castleGame.classList.remove("fx-good", "fx-bad", "fx-breach");
+  els.castleFx.classList.remove("is-good", "is-bad", "is-breach");
+  els.castleFx.textContent = "";
+}
+
+function triggerCastleFx(type, text) {
+  if (!els.castleGame || !els.castleFx) {
+    return;
+  }
+  clearCastleFx();
+  const sceneClass = type === "good" ? "fx-good" : type === "breach" ? "fx-breach" : "fx-bad";
+  const textClass = type === "good" ? "is-good" : type === "breach" ? "is-breach" : "is-bad";
+  els.castleGame.classList.add(sceneClass);
+  els.castleFx.classList.add(textClass);
+  els.castleFx.textContent = text;
+  castleFxTimerId = setTimeout(() => {
+    clearCastleFx();
+  }, type === "breach" ? 1150 : 950);
+}
+
+function clearCastleDanger() {
+  if (castleDangerTimerId) {
+    clearTimeout(castleDangerTimerId);
+    castleDangerTimerId = null;
+  }
+  if (!els.castleDangerLayer) {
+    return;
+  }
+  els.castleDangerLayer.classList.remove("is-active");
+  els.castleDangerLayer.innerHTML = "";
+  document.body.classList.remove("castle-breach-shake");
+}
+
+function triggerCastleDanger() {
+  if (!els.castleDangerLayer) {
+    return;
+  }
+  clearCastleDanger();
+  els.castleDangerLayer.classList.add("is-active");
+
+  const flames = ["🔥", "💥", "🔥", "🔥", "💣", "⚡"];
+  for (let i = 0; i < 26; i += 1) {
+    const flame = document.createElement("span");
+    flame.className = "castle-danger-flame";
+    flame.textContent = flames[Math.floor(Math.random() * flames.length)];
+    flame.style.left = `${Math.random() * 100}%`;
+    flame.style.animationDelay = `${Math.random() * 480}ms`;
+    flame.style.animationDuration = `${950 + Math.random() * 900}ms`;
+    els.castleDangerLayer.appendChild(flame);
+  }
+
+  document.body.classList.remove("castle-breach-shake");
+  void document.body.offsetWidth;
+  document.body.classList.add("castle-breach-shake");
+
+  castleDangerTimerId = setTimeout(() => {
+    clearCastleDanger();
+  }, CASTLE_DANGER_DURATION_MS);
+}
+
+function spawnCastleWave() {
+  if (state.challenge.castleWave >= getCastleWaveCount()) {
+    state.challenge.castleEnemies = [];
+    state.challenge.castleWaveTotal = 0;
+    state.challenge.castleWaveDefeated = 0;
+    return;
+  }
+  const waveNumber = state.challenge.castleWave + 1;
+  const total = castleEnemiesForWave(waveNumber);
+  const enemySet = castleEnemySetForWave(waveNumber);
+  state.challenge.castleWaveTotal = total;
+  state.challenge.castleWaveDefeated = 0;
+  state.challenge.castleEnemies = Array.from({ length: total }, (_, idx) => ({
+    pos: idx,
+    emoji: enemySet[Math.floor(Math.random() * enemySet.length)],
+  }));
+}
+
+function advanceCastleEnemies(isCorrect) {
+  if (!state.challenge.castleEnemies.length) {
+    return 0;
+  }
+  const config = getCastleConfig();
+  const moveBy = isCorrect ? config.advanceOnCorrect : config.advanceOnWrong;
+  if (moveBy <= 0) {
+    return 0;
+  }
+  state.challenge.castleEnemies.forEach((enemy) => {
+    enemy.pos += moveBy;
+  });
+  const hits = state.challenge.castleEnemies.filter((enemy) => enemy.pos >= config.trackSteps).length;
+  if (hits > 0) {
+    state.challenge.castleLives = Math.max(0, state.challenge.castleLives - hits);
+    state.challenge.castleEnemies = state.challenge.castleEnemies.filter((enemy) => enemy.pos < config.trackSteps);
+  }
+  return hits;
+}
+
+function eliminateFrontCastleEnemy() {
+  if (!state.challenge.castleEnemies.length) {
+    return false;
+  }
+  let bestIndex = 0;
+  for (let i = 1; i < state.challenge.castleEnemies.length; i += 1) {
+    if (state.challenge.castleEnemies[i].pos > state.challenge.castleEnemies[bestIndex].pos) {
+      bestIndex = i;
+    }
+  }
+  state.challenge.castleEnemies.splice(bestIndex, 1);
+  state.challenge.castleWaveDefeated += 1;
+  return true;
+}
+
 function updateProgress(factId, isCorrect) {
   const entry = getEntry(factId);
   entry.attempts += 1;
@@ -601,26 +847,82 @@ function pickFact({ filter = "all", avoidId = null } = {}) {
   return weightedFacts[weightedFacts.length - 1].fact;
 }
 
+function renderLearnMysteryBoard() {
+  els.learnMysteryGrid.innerHTML = "";
+  for (let row = 0; row <= 10; row += 1) {
+    for (let col = 0; col <= 10; col += 1) {
+      const cell = document.createElement("button");
+      cell.type = "button";
+
+      if (row === 0 && col === 0) {
+        cell.className = "mystery-head mystery-corner";
+        cell.textContent = "x";
+        cell.disabled = true;
+      } else if (row === 0) {
+        cell.className = "mystery-head";
+        cell.textContent = `${col}`;
+        cell.disabled = true;
+      } else if (col === 0) {
+        cell.className = "mystery-head";
+        cell.textContent = `${row}`;
+        cell.disabled = true;
+      } else {
+        const key = `${row}x${col}`;
+        const revealed = state.learnMystery[key] === true;
+        cell.className = `mystery-cell ${revealed ? "is-revealed" : ""}`;
+        cell.dataset.a = `${row}`;
+        cell.dataset.b = `${col}`;
+        cell.textContent = revealed ? `${row * col}` : "?";
+        cell.setAttribute("aria-label", `${row} multiplié par ${col}`);
+      }
+
+      els.learnMysteryGrid.appendChild(cell);
+    }
+  }
+}
+
 function renderLearn() {
   const table = state.learnTable;
+  const blockTable = state.learnBlockTable;
   const mult = state.learnMultiplier;
-  const result = table * mult;
+  const result = blockTable * mult;
+
+  els.learnModeButtons.forEach((btn) => {
+    const mode = btn.dataset.learnMode;
+    const active = mode === state.learnMode;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+
+  els.learnSubpanels.forEach((panel) => {
+    panel.classList.toggle("is-active", panel.id === `learn-panel-${state.learnMode}`);
+  });
 
   els.learnTableButtons.forEach((btn) => {
     const val = Number(btn.dataset.learnTable);
     btn.classList.toggle("is-active", val === table);
   });
 
-  els.learnMultiplierButtons.forEach((btn) => {
-    const val = Number(btn.dataset.learnMultiplier);
-    btn.classList.toggle("is-active", val === mult);
+  els.learnBlockTableButtons.forEach((btn) => {
+    const val = Number(btn.dataset.blockTable);
+    btn.classList.toggle("is-active", val === blockTable);
   });
 
-  els.learnEquation.textContent = `${table} x ${mult} = ${result} (${table} groupes de ${mult})`;
+  els.learnTableTitle.textContent = `Table de ${table}`;
+  els.learnList.innerHTML = "";
+  for (let b = 1; b <= 10; b += 1) {
+    const item = document.createElement("li");
+    item.textContent = `${table} x ${b} = ${table * b}`;
+    els.learnList.appendChild(item);
+  }
+
+  els.learnMultiplierSlider.value = `${mult}`;
+  els.learnMultiplierValue.textContent = `${mult}`;
+  els.learnEquation.textContent = `${blockTable} x ${mult} = ${result} (${blockTable} groupes de ${mult})`;
 
   els.learnGrid.innerHTML = "";
-  els.learnGrid.style.gridTemplateRows = `repeat(${table}, 1fr)`;
-  for (let r = 0; r < table; r += 1) {
+  els.learnGrid.style.gridTemplateRows = `repeat(${blockTable}, 1fr)`;
+  for (let r = 0; r < blockTable; r += 1) {
     const row = document.createElement("div");
     row.className = "array-grid-row";
     row.style.gridTemplateColumns = `repeat(${mult}, 1fr)`;
@@ -632,12 +934,7 @@ function renderLearn() {
     els.learnGrid.appendChild(row);
   }
 
-  els.learnList.innerHTML = "";
-  for (let b = 1; b <= 10; b += 1) {
-    const item = document.createElement("li");
-    item.textContent = `${table} x ${b} = ${table * b}`;
-    els.learnList.appendChild(item);
-  }
+  renderLearnMysteryBoard();
 }
 
 function updateTrainCounters() {
@@ -719,9 +1016,31 @@ function updateChallengeUI() {
     els.challengeScore.textContent = `Score: ${state.challenge.score} pts`;
     return;
   }
-  const progress = state.challenge.mode === "image" ? state.challenge.progress : state.challenge.bricks.length;
-  els.challengeTimer.textContent = `Progression: ${progress} / ${GAME_MAX_STEPS}`;
-  els.challengeScore.textContent = `Réussites: ${state.challenge.score}`;
+  if (state.challenge.mode === "image") {
+    els.challengeTimer.textContent = `Progression: ${state.challenge.progress} / ${GAME_MAX_STEPS}`;
+    els.challengeScore.textContent = `Réussites: ${state.challenge.score}`;
+    return;
+  }
+  if (state.challenge.mode === "tower") {
+    els.challengeTimer.textContent = `Progression: ${state.challenge.bricks.length} / ${GAME_MAX_STEPS}`;
+    els.challengeScore.textContent = `Réussites: ${state.challenge.score}`;
+    return;
+  }
+  if (state.challenge.mode === "boss") {
+    els.challengeTimer.textContent = `Boss: ${state.challenge.bossHp} / ${BOSS_MAX_HP}`;
+    els.challengeScore.textContent = `Bouclier: ${state.challenge.bossShield} / ${BOSS_MAX_SHIELD}`;
+    return;
+  }
+  if (state.challenge.mode === "combo") {
+    els.challengeTimer.textContent = `Combo: ${state.challenge.comboStreak} / ${COMBO_TARGET}`;
+    els.challengeScore.textContent = `Meilleur: ${state.challenge.comboBest}`;
+    return;
+  }
+  if (state.challenge.mode === "castle") {
+    const config = getCastleConfig();
+    els.challengeTimer.textContent = `Vagues: ${state.challenge.castleWave} / ${getCastleWaveCount()}`;
+    els.challengeScore.textContent = `Vies (${config.label}): ${state.challenge.castleLives} / ${config.lives}`;
+  }
 }
 
 function clearChallengeTimer() {
@@ -777,6 +1096,8 @@ function renderLeaderboard() {
 
 function cancelChallengeSilently() {
   clearCelebration();
+  clearCastleFx();
+  clearCastleDanger();
   clearChallengeTimer();
   state.challenge.active = false;
   state.challenge.score = 0;
@@ -786,6 +1107,15 @@ function cancelChallengeSilently() {
   state.challenge.progress = 0;
   state.challenge.bricks = [];
   state.challenge.imageTargets = pickImageTargets();
+  state.challenge.bossHp = BOSS_MAX_HP;
+  state.challenge.bossShield = BOSS_MAX_SHIELD;
+  state.challenge.comboStreak = 0;
+  state.challenge.comboBest = 0;
+  state.challenge.castleWave = 0;
+  state.challenge.castleLives = getCastleConfig().lives;
+  state.challenge.castleEnemies = [];
+  state.challenge.castleWaveTotal = 0;
+  state.challenge.castleWaveDefeated = 0;
   state.challenge.timeLeft = CHALLENGE_DURATION_SECONDS;
 
   els.challengeStart.disabled = false;
@@ -800,6 +1130,9 @@ function cancelChallengeSilently() {
 
 function stopChallenge(reason = "") {
   clearChallengeTimer();
+  if (!(state.challenge.mode === "castle" && reason === "failed")) {
+    clearCastleDanger();
+  }
   state.challenge.active = false;
   els.challengeStart.disabled = false;
   els.challengeAnswer.disabled = true;
@@ -824,8 +1157,30 @@ function stopChallenge(reason = "") {
     return;
   }
 
-  const progress = state.challenge.mode === "image" ? state.challenge.progress : state.challenge.bricks.length;
-  setFeedback(els.challengeInlineResult, "good", `Partie finie: ${progress} / ${GAME_MAX_STEPS}.`);
+  if (state.challenge.mode === "image") {
+    setFeedback(els.challengeInlineResult, "good", `Image révélée: ${state.challenge.progress} / ${GAME_MAX_STEPS}.`);
+  } else if (state.challenge.mode === "tower") {
+    setFeedback(els.challengeInlineResult, "good", `Tour complète: ${state.challenge.bricks.length} / ${GAME_MAX_STEPS}.`);
+  } else if (state.challenge.mode === "boss") {
+    const message =
+      reason === "completed"
+        ? "Boss vaincu ! Victoire !"
+        : `Le boss gagne... Réessaie ! (bouclier à ${state.challenge.bossShield})`;
+    setFeedback(els.challengeInlineResult, reason === "completed" ? "good" : "bad", message);
+  } else if (state.challenge.mode === "combo") {
+    setFeedback(els.challengeInlineResult, "good", `Combo max atteint: ${state.challenge.comboBest}.`);
+  } else if (state.challenge.mode === "castle") {
+    const message =
+      reason === "completed"
+        ? "Château défendu ! Les vagues sont repoussées."
+        : "Le château est tombé... Relance la défense !";
+    setFeedback(els.challengeInlineResult, reason === "completed" ? "good" : "bad", message);
+    if (reason === "failed") {
+      triggerCastleFx("breach", "🏰 Château pris !");
+      triggerCastleDanger();
+    }
+  }
+
   if (reason === "completed") {
     triggerCelebration();
   }
@@ -892,6 +1247,8 @@ function startChallenge() {
     return;
   }
   clearCelebration();
+  clearCastleFx();
+  clearCastleDanger();
   if (!state.settings.enabledTables.length) {
     setFeedback(els.challengeInlineResult, "bad", "Aucune table active. Va dans Configuration.");
     return;
@@ -905,6 +1262,15 @@ function startChallenge() {
   state.challenge.progress = 0;
   state.challenge.bricks = [];
   state.challenge.imageTargets = pickImageTargets();
+  state.challenge.bossHp = BOSS_MAX_HP;
+  state.challenge.bossShield = BOSS_MAX_SHIELD;
+  state.challenge.comboStreak = 0;
+  state.challenge.comboBest = 0;
+  state.challenge.castleWave = 0;
+  state.challenge.castleLives = getCastleConfig().lives;
+  state.challenge.castleEnemies = [];
+  state.challenge.castleWaveTotal = 0;
+  state.challenge.castleWaveDefeated = 0;
   state.challenge.timeLeft = CHALLENGE_DURATION_SECONDS;
 
   els.challengeStart.disabled = true;
@@ -914,6 +1280,12 @@ function startChallenge() {
   renderChallengeVisuals();
   updateChallengeUI();
   nextChallengeQuestion();
+
+  if (state.challenge.mode === "castle") {
+    spawnCastleWave();
+    renderChallengeVisuals();
+    updateChallengeUI();
+  }
 
   if (state.challenge.mode === "timed") {
     state.challenge.timerId = setInterval(() => {
@@ -974,7 +1346,7 @@ function onChallengeSubmit(event) {
     return;
   }
 
-  if (ok) {
+  if ((state.challenge.mode === "image" || state.challenge.mode === "tower") && ok) {
     state.challenge.score += 1;
   }
 
@@ -987,34 +1359,95 @@ function onChallengeSubmit(event) {
       setFeedback(els.challengeInlineResult, "bad", `Essaye encore : ${factText}.`);
     }
   } else {
-    if (ok) {
-      if (state.challenge.bricks.length < GAME_MAX_STEPS) {
-        state.challenge.bricks.push({
-          table: state.challenge.current.a,
-          cracks: 0,
-        });
-      }
-      setFeedback(els.challengeInlineResult, "good", `Bravo ! ${factText}.`);
-    } else if (state.challenge.bricks.length) {
-      const topBrick = state.challenge.bricks[state.challenge.bricks.length - 1];
-      topBrick.cracks += 1;
-      if (topBrick.cracks >= 3) {
-        state.challenge.bricks.pop();
-        setFeedback(els.challengeInlineResult, "bad", `La brique casse ! ${factText}.`);
+    if (state.challenge.mode === "tower") {
+      if (ok) {
+        if (state.challenge.bricks.length < GAME_MAX_STEPS) {
+          state.challenge.bricks.push({
+            table: state.challenge.current.a,
+            cracks: 0,
+          });
+        }
+        setFeedback(els.challengeInlineResult, "good", `Bravo ! ${factText}.`);
+      } else if (state.challenge.bricks.length) {
+        const topBrick = state.challenge.bricks[state.challenge.bricks.length - 1];
+        topBrick.cracks += 1;
+        if (topBrick.cracks >= 3) {
+          state.challenge.bricks.pop();
+          setFeedback(els.challengeInlineResult, "bad", `La brique casse ! ${factText}.`);
+        } else {
+          setFeedback(els.challengeInlineResult, "bad", `Brique fissurée (${topBrick.cracks}/3). ${factText}.`);
+        }
       } else {
-        setFeedback(els.challengeInlineResult, "bad", `Brique fissurée (${topBrick.cracks}/3). ${factText}.`);
+        setFeedback(els.challengeInlineResult, "bad", `Essaye encore : ${factText}.`);
       }
-    } else {
-      setFeedback(els.challengeInlineResult, "bad", `Essaye encore : ${factText}.`);
+    } else if (state.challenge.mode === "boss") {
+      if (ok) {
+        state.challenge.bossHp = Math.max(0, state.challenge.bossHp - 1);
+        setFeedback(els.challengeInlineResult, "good", `Coup réussi ! ${factText}.`);
+      } else {
+        state.challenge.bossShield = Math.max(0, state.challenge.bossShield - 1);
+        setFeedback(els.challengeInlineResult, "bad", `Le boss contre-attaque ! ${factText}.`);
+      }
+    } else if (state.challenge.mode === "combo") {
+      if (ok) {
+        state.challenge.comboStreak += 1;
+        state.challenge.comboBest = Math.max(state.challenge.comboBest, state.challenge.comboStreak);
+        setFeedback(els.challengeInlineResult, "good", `Combo x${state.challenge.comboStreak} ! ${factText}.`);
+      } else {
+        state.challenge.comboStreak = 0;
+        setFeedback(els.challengeInlineResult, "bad", `Combo cassé... ${factText}.`);
+      }
+    } else if (state.challenge.mode === "castle") {
+      const hits = advanceCastleEnemies(ok);
+      if (ok) {
+        const eliminated = eliminateFrontCastleEnemy();
+        if (eliminated) {
+          const hitText = hits > 0 ? ` ${hits} ennemi(s) ont touché le château.` : "";
+          setFeedback(els.challengeInlineResult, "good", `Ennemi éliminé ! ${factText}.${hitText}`);
+          triggerCastleFx("good", "✅ Touché !");
+        } else {
+          setFeedback(els.challengeInlineResult, "good", `Bonne réponse ! ${factText}.`);
+          triggerCastleFx("good", "✅ Bien joué !");
+        }
+      } else {
+        const hitText = hits > 0 ? ` ${hits} ennemi(s) ont touché le château.` : " Les ennemis avancent !";
+        setFeedback(els.challengeInlineResult, "bad", `Aïe ! ${factText}.${hitText}`);
+        if (hits > 0) {
+          triggerCastleFx("breach", "💥 Brèche !");
+        } else {
+          triggerCastleFx("bad", "⚠️ Ils avancent !");
+        }
+      }
+
+      if (state.challenge.castleEnemies.length === 0 && state.challenge.castleLives > 0) {
+        const maxWaves = getCastleWaveCount();
+        state.challenge.castleWave = Math.min(maxWaves, state.challenge.castleWave + 1);
+        if (state.challenge.castleWave < maxWaves) {
+          spawnCastleWave();
+          triggerCastleFx("good", `🌊 Vague ${state.challenge.castleWave + 1}`);
+        }
+      }
     }
   }
 
   renderChallengeVisuals();
   updateChallengeUI();
 
-  const progress = state.challenge.mode === "image" ? state.challenge.progress : state.challenge.bricks.length;
-  if (progress >= GAME_MAX_STEPS) {
+  if (
+    (state.challenge.mode === "image" && state.challenge.progress >= GAME_MAX_STEPS) ||
+    (state.challenge.mode === "tower" && state.challenge.bricks.length >= GAME_MAX_STEPS) ||
+    (state.challenge.mode === "boss" && state.challenge.bossHp <= 0) ||
+    (state.challenge.mode === "combo" && state.challenge.comboStreak >= COMBO_TARGET) ||
+    (state.challenge.mode === "castle" && state.challenge.castleWave >= getCastleWaveCount())
+  ) {
     stopChallenge("completed");
+    return;
+  }
+  if (
+    (state.challenge.mode === "boss" && state.challenge.bossShield <= 0) ||
+    (state.challenge.mode === "castle" && state.challenge.castleLives <= 0)
+  ) {
+    stopChallenge("failed");
     return;
   }
 
@@ -1063,16 +1496,85 @@ function renderTowerGame() {
   }
 }
 
+function renderBossGame() {
+  const hpRatio = Math.max(0, Math.min(1, state.challenge.bossHp / BOSS_MAX_HP));
+  els.bossHpText.textContent = `${state.challenge.bossHp} / ${BOSS_MAX_HP}`;
+  els.bossHpFill.style.width = `${hpRatio * 100}%`;
+  els.bossShieldText.textContent = `Bouclier: ${state.challenge.bossShield} / ${BOSS_MAX_SHIELD}`;
+}
+
+function renderComboGame() {
+  const ratio = Math.max(0, Math.min(1, state.challenge.comboStreak / COMBO_TARGET));
+  els.comboValue.textContent = `Combo x${state.challenge.comboStreak}`;
+  els.comboBest.textContent = `Meilleur combo: ${state.challenge.comboBest}`;
+  els.comboFill.style.width = `${ratio * 100}%`;
+}
+
+function renderCastleGame() {
+  const config = getCastleConfig();
+  const maxWaves = getCastleWaveCount();
+  const nextWave = Math.min(maxWaves, state.challenge.castleWave + 1);
+
+  els.castleDifficultyButtons.forEach((btn) => {
+    const isActive = btn.dataset.castleDifficulty === state.challenge.castleDifficulty;
+    btn.classList.toggle("is-active", isActive);
+    btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+
+  els.castleWaveText.textContent = `${state.challenge.castleWave} / ${maxWaves}`;
+  els.castleLives.textContent = `Vies du château: ${state.challenge.castleLives} / ${config.lives}`;
+  if (state.challenge.castleWaveTotal > 0) {
+    els.castleWaveDetail.textContent = `Vague ${nextWave}: ${state.challenge.castleWaveDefeated} / ${state.challenge.castleWaveTotal}`;
+  } else {
+    els.castleWaveDetail.textContent = `Vague ${nextWave}: prête`;
+  }
+
+  els.castleIncoming.textContent = `Ennemis restants: ${state.challenge.castleEnemies.length}`;
+
+  const cells = Array.from({ length: config.trackSteps }, () => []);
+  state.challenge.castleEnemies.forEach((enemy) => {
+    if (enemy.pos >= 0 && enemy.pos < config.trackSteps) {
+      cells[enemy.pos].push(enemy.emoji || "👾");
+    }
+  });
+
+  els.castleTrack.style.gridTemplateColumns = `repeat(${config.trackSteps}, minmax(0, 1fr))`;
+  els.castleTrack.innerHTML = "";
+  for (let step = 0; step < config.trackSteps; step += 1) {
+    const lane = document.createElement("div");
+    lane.className = "castle-lane-cell";
+    lane.dataset.step = `${step}`;
+    if (cells[step].length > 0) {
+      const enemy = document.createElement("span");
+      enemy.className = "castle-enemy";
+      const preview = cells[step].slice(0, 2).join("");
+      enemy.textContent = cells[step].length <= 2 ? preview : `${preview}${cells[step].length}`;
+      lane.appendChild(enemy);
+    }
+    els.castleTrack.appendChild(lane);
+  }
+}
+
 function renderChallengeVisuals() {
   const timedMode = state.challenge.mode === "timed";
   const imageMode = state.challenge.mode === "image";
+  const towerMode = state.challenge.mode === "tower";
+  const bossMode = state.challenge.mode === "boss";
+  const comboMode = state.challenge.mode === "combo";
+  const castleMode = state.challenge.mode === "castle";
 
   els.timedGame.hidden = !timedMode;
   els.imageGame.hidden = !imageMode;
-  els.towerGame.hidden = timedMode || imageMode;
+  els.towerGame.hidden = !towerMode;
+  els.bossGame.hidden = !bossMode;
+  els.comboGame.hidden = !comboMode;
+  els.castleGame.hidden = !castleMode;
   els.gameModeTimed.classList.toggle("is-active", timedMode);
   els.gameModeImage.classList.toggle("is-active", imageMode);
-  els.gameModeTower.classList.toggle("is-active", state.challenge.mode === "tower");
+  els.gameModeTower.classList.toggle("is-active", towerMode);
+  els.gameModeBoss.classList.toggle("is-active", bossMode);
+  els.gameModeCombo.classList.toggle("is-active", comboMode);
+  els.gameModeCastle.classList.toggle("is-active", castleMode);
   els.challengeTimer.hidden = timedMode;
   els.challengeTimerGauge.hidden = !timedMode;
   els.challengeStart.textContent = timedMode ? "Démarrer le défi" : "Rejouer";
@@ -1080,6 +1582,9 @@ function renderChallengeVisuals() {
   renderTimedGame();
   renderImageGame();
   renderTowerGame();
+  renderBossGame();
+  renderComboGame();
+  renderCastleGame();
   renderLeaderboard();
 }
 
@@ -1089,7 +1594,7 @@ function renderChallengeLayout() {
 }
 
 function setChallengeMode(mode) {
-  if (mode !== "timed" && mode !== "image" && mode !== "tower") {
+  if (mode !== "timed" && mode !== "image" && mode !== "tower" && mode !== "boss" && mode !== "combo" && mode !== "castle") {
     return;
   }
   state.challenge.mode = mode;
@@ -1098,6 +1603,28 @@ function setChallengeMode(mode) {
   if (mode !== "timed") {
     startChallenge();
   }
+}
+
+function setCastleDifficulty(level) {
+  const next = sanitizeCastleDifficulty(level);
+  if (next === state.challenge.castleDifficulty) {
+    renderCastleGame();
+    updateChallengeUI();
+    return;
+  }
+
+  state.challenge.castleDifficulty = next;
+  state.challenge.castleLives = getCastleConfig().lives;
+  saveState();
+
+  if (state.challenge.mode === "castle") {
+    cancelChallengeSilently();
+    startChallenge();
+    return;
+  }
+
+  renderCastleGame();
+  updateChallengeUI();
 }
 
 function renderProgress() {
@@ -1263,11 +1790,14 @@ function buildBackupPayload() {
     exportedAt: new Date().toISOString(),
     data: {
       progress: state.progress,
+      learnMode: state.learnMode,
       learnTable: state.learnTable,
+      learnBlockTable: state.learnBlockTable,
       learnMultiplier: state.learnMultiplier,
       settings: {
         enabledTables: state.settings.enabledTables,
         gameMode: state.challenge.mode,
+        castleDifficulty: state.challenge.castleDifficulty,
         leaderboard: state.settings.leaderboard,
         visualSide: state.settings.visualSide,
       },
@@ -1339,8 +1869,11 @@ function applyImportedPayload(payload) {
   }
 
   state.progress = sanitizeProgress(source.progress);
+  state.learnMode = sanitizeLearnMode(source.learnMode);
   state.learnTable = Number.isInteger(source.learnTable) ? clampToRange(source.learnTable, 1, 10) : 2;
+  state.learnBlockTable = Number.isInteger(source.learnBlockTable) ? clampToRange(source.learnBlockTable, 1, 10) : 2;
   state.learnMultiplier = Number.isInteger(source.learnMultiplier) ? clampToRange(source.learnMultiplier, 1, 10) : 4;
+  state.learnMystery = {};
 
   const importedTables = source.settings?.enabledTables || source.enabledTables;
   state.settings.enabledTables = sanitizeEnabledTables(importedTables);
@@ -1349,10 +1882,15 @@ function applyImportedPayload(payload) {
   if (
     source.settings?.gameMode === "timed" ||
     source.settings?.gameMode === "image" ||
-    source.settings?.gameMode === "tower"
+    source.settings?.gameMode === "tower" ||
+    source.settings?.gameMode === "boss" ||
+    source.settings?.gameMode === "combo" ||
+    source.settings?.gameMode === "castle"
   ) {
     state.challenge.mode = source.settings.gameMode;
   }
+  state.challenge.castleDifficulty = sanitizeCastleDifficulty(source.settings?.castleDifficulty);
+  state.challenge.castleLives = getCastleConfig().lives;
 
   state.train.filter = "all";
   state.train.asked = 0;
@@ -1404,12 +1942,17 @@ function resetAllData() {
   }
 
   state.progress = {};
+  state.learnMode = "tables";
   state.learnTable = 2;
+  state.learnBlockTable = 2;
   state.learnMultiplier = 4;
+  state.learnMystery = {};
   state.settings.enabledTables = [...DEFAULT_TABLES];
   state.settings.leaderboard = [];
   state.settings.visualSide = "left";
   state.challenge.mode = "timed";
+  state.challenge.castleDifficulty = "normal";
+  state.challenge.castleLives = CASTLE_DIFFICULTIES.normal.lives;
 
   state.train.filter = "all";
   state.train.asked = 0;
@@ -1443,6 +1986,14 @@ function bindEvents() {
     });
   });
 
+  els.learnModeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.learnMode = sanitizeLearnMode(btn.dataset.learnMode);
+      saveState();
+      renderLearn();
+    });
+  });
+
   els.learnTableButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       state.learnTable = Number(btn.dataset.learnTable);
@@ -1451,12 +2002,37 @@ function bindEvents() {
     });
   });
 
-  els.learnMultiplierButtons.forEach((btn) => {
+  els.learnBlockTableButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.learnMultiplier = Number(btn.dataset.learnMultiplier);
+      state.learnBlockTable = Number(btn.dataset.blockTable);
       saveState();
       renderLearn();
     });
+  });
+
+  els.learnMultiplierSlider.addEventListener("input", () => {
+    state.learnMultiplier = Number(els.learnMultiplierSlider.value);
+    saveState();
+    renderLearn();
+  });
+
+  els.learnMysteryGrid.addEventListener("click", (event) => {
+    const cell = event.target.closest(".mystery-cell");
+    if (!cell) {
+      return;
+    }
+    const a = Number(cell.dataset.a);
+    const b = Number(cell.dataset.b);
+    if (!Number.isInteger(a) || !Number.isInteger(b)) {
+      return;
+    }
+    state.learnMystery[`${a}x${b}`] = true;
+    renderLearn();
+  });
+
+  els.learnMysteryReset.addEventListener("click", () => {
+    state.learnMystery = {};
+    renderLearn();
   });
 
   els.trainFilter.addEventListener("change", () => {
@@ -1480,6 +2056,20 @@ function bindEvents() {
   });
   els.gameModeTower.addEventListener("click", () => {
     setChallengeMode("tower");
+  });
+  els.gameModeBoss.addEventListener("click", () => {
+    setChallengeMode("boss");
+  });
+  els.gameModeCombo.addEventListener("click", () => {
+    setChallengeMode("combo");
+  });
+  els.gameModeCastle.addEventListener("click", () => {
+    setChallengeMode("castle");
+  });
+  els.castleDifficultyButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setCastleDifficulty(btn.dataset.castleDifficulty);
+    });
   });
   els.leaderboardClear.addEventListener("click", () => {
     state.settings.leaderboard = [];
